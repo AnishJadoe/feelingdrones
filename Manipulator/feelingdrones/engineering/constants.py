@@ -1,0 +1,11 @@
+
+MASS_LINK_1 = 0.010 # [kg]
+LENGTH_LINK_1 = 0.0485 # [m]
+
+MASS_LINK_2 = 0.0571 # [kg]
+LENGTH_LINK_2 = 0.024 # [m]
+
+MASS_LINK_3 = 0.0665 # [kg]
+LENGTH_LINK_3 = 0.031 # [m]
+
+GRAIVTY_CONSTANT = 9.81 # [m/s^2]
