@@ -40,46 +40,19 @@ BaseReferencePositionPub::BaseReferencePositionPub()
 /* Callback Functions */
 void BaseReferencePositionPub::_timer_callback()
 {
-
-    double t = (this->now() - this->_beginning).seconds();
     
     if (_offboard_setpoint_counter == 10) 
     {
-        // /* On the real system we want to arm and change mode using the remote control
-        //     Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
-        // std::cout << "Prepare for Takeoff";
-        // // Change to Offboard mode after 10 setpoints
-        // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+        /* On the real system we want to arm and change mode using the remote control
+            Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
+        // Change to Offboard mode after 10 setpoints
+        this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-        // // Arm the vehicle
-        // this->arm();
-
-    }
-
-    if (t >= 1){
-        std::cout << "Starting \n";
-        std::cout << "Setting position to x = 0 , y = 0 \n";
-        _ref_pos.x() = 0;
-        _ref_pos.y() = 0;
-    }
-    if (t >= 20){
-        std::cout << "Setting position to x = 500 , y = 0\n";
-        _ref_pos.x() = 500;
-        _ref_pos.y() = 0;
+        // Arm the vehicle
+        this->arm();
 
     }
-    if (t >= 40){
-        std::cout << "Setting position to x = 500 , y = 0\n";
-        _ref_pos.x() = 500;
-        _ref_pos.y() = 500;
 
-    }
-    if (t >= 60){
-        std::cout << "Setting position to x = 0 , y = 0 \n";
-        _ref_pos.x() = 0;
-        _ref_pos.y() = 0;
-
-    }
     // offboard_control_mode needs to be paired with trajectory_setpoint
     this->_publish_offboard_control_mode();
     this->_publish_trajectory_setpoint();
@@ -97,13 +70,37 @@ void BaseReferencePositionPub::_timer_callback()
 void BaseReferencePositionPub::_publish_trajectory_setpoint()
 {
     double t = (this->now() - this->_beginning).seconds();
-
     /* After mission time ran out */
     if(t > 1000 && !this->_landed)
     {
         this->_landed = true;
         this->land();
         return;
+    }
+    
+    if (t >= 10 && t < 20){
+        std::cout << "Starting \n";
+        std::cout << "Setting position to x = 0 , y = 0 \n";
+        _ref_pos.x() = 0;
+        _ref_pos.y() = 0;
+    }
+    if (t >= 20 && t < 30){
+        std::cout << "Setting position to x = 10 , y = 0\n";
+        _ref_pos.x() = 10;
+        _ref_pos.y() = 0;
+
+    }
+    if (t >= 30 && t < 40){
+        std::cout << "Setting position to x = 10 , y = 10\n";
+        _ref_pos.x() = 10;
+        _ref_pos.y() = 10;
+
+    }
+    if (t >= 40){
+        std::cout << "Setting position to x = 0 , y = 0 \n";
+        _ref_pos.x() = 0;
+        _ref_pos.y() = 0;
+
     }
 
     px4_msgs::msg::TrajectorySetpoint msg{};

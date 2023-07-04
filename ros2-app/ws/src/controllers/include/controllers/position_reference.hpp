@@ -41,7 +41,7 @@ private:
 
     // Current High Level Reference
     Eigen::Vector3d _ref_pos;
-    double _ref_yaw;
+    float _ref_yaw;
 
     /* Callback Functions */
     void _timer_callback();
