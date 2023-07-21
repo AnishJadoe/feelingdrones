@@ -20,6 +20,7 @@ private:
     uint8_t _nav_state, _arming_state;
     bool _taken_off = false, _landed = false;
     uint _offboard_setpoint_counter;
+    int _period_counter;
 
     double _frequency;
 

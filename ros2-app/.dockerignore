@@ -2,6 +2,7 @@ ws/build
 ws/install
 ws/log
 
+ws/src/log
 ws/src/px4_msgs/build
 ws/src/px4_msgs/install
 ws/src/px4_msgs/log

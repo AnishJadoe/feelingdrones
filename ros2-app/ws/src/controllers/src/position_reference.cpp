@@ -34,6 +34,9 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     this->_ref_pos = {0.0, 0.0, -1.5};
     this->_ref_yaw = 0.0;
 
+    //Start counter
+    this->_period_counter = 0;
+
 }
 
 
@@ -70,6 +73,8 @@ void BaseReferencePositionPub::_timer_callback()
 void BaseReferencePositionPub::_publish_trajectory_setpoint()
 {
     double t = (this->now() - this->_beginning).seconds();
+    double period = 50;
+
     /* After mission time ran out */
     if(t > 1000 && !this->_landed)
     {
@@ -77,30 +82,39 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
         this->land();
         return;
     }
-    
-    if (t >= 10 && t < 20){
-        std::cout << "Starting \n";
-        std::cout << "Setting position to x = 0 , y = 0 \n";
-        _ref_pos.x() = 0;
-        _ref_pos.y() = 0;
-    }
-    if (t >= 20 && t < 30){
-        std::cout << "Setting position to x = 10 , y = 0\n";
-        _ref_pos.x() = 10;
-        _ref_pos.y() = 0;
 
+    if(t>10 && !this->_taken_off){
+        this->takeoff();
     }
-    if (t >= 30 && t < 40){
-        std::cout << "Setting position to x = 10 , y = 10\n";
-        _ref_pos.x() = 10;
-        _ref_pos.y() = 10;
 
+    if (t >= (20 + period * this->_period_counter) && t < (30 + period * this->_period_counter)) {
+        this->_ref_pos.x() = 10;
+        this->_ref_pos.y() = 0;
+
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
-    if (t >= 40){
-        std::cout << "Setting position to x = 0 , y = 0 \n";
-        _ref_pos.x() = 0;
-        _ref_pos.y() = 0;
+    if (t >= (30 + period * this->_period_counter) && t < (40 + period * this->_period_counter)) {
+        this->_ref_pos.x() = 10;
+        this->_ref_pos.y() = 10;
 
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t >= (40 + period * this->_period_counter) && t < (50 + period * this->_period_counter)) {
+        this->_ref_pos.x() = 0;
+        this->_ref_pos.y() = 10;
+
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t >= (50 + period * this->_period_counter) && t < (60 + period * this->_period_counter)) {
+        this->_ref_pos.x() = 0;
+        this->_ref_pos.y() = 0;
+
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+
+    if (t >= 70 + period * this->_period_counter){
+        this->_period_counter++;
+        std::cout << "Incrementing counter to: " << _period_counter << std::endl;
     }
 
     px4_msgs::msg::TrajectorySetpoint msg{};
