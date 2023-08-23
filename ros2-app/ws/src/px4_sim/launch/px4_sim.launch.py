@@ -64,17 +64,17 @@ def generate_launch_description():
             prefix="bash -c 'sleep 5s; $0 $@'",
             output='screen'),
             
-        # ExecuteProcess(
-        #     cmd=[
-        #         WORKING_DIR + '/PX4-Autopilot/build/px4_sitl_default/bin/px4',
-        #         WORKING_DIR + '/PX4-Autopilot/ROMFS/px4fmu_common/',
-        #         '-s',
-        #         WORKING_DIR +  '/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/rcS'
-        #     ],
-        #     cwd=PX4_RUN_DIR,
-        #     output='screen'),
-        # ExecuteProcess(
-        #     cmd=['micrortps_agent', '-t', 'UDP'],
-        #     output='screen'),
+        ExecuteProcess(
+            cmd=[
+                WORKING_DIR + '/PX4-Autopilot/build/px4_sitl_default/bin/px4',
+                WORKING_DIR + '/PX4-Autopilot/ROMFS/px4fmu_common/',
+                '-s',
+                WORKING_DIR +  '/PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/rcS'
+            ],
+            cwd=PX4_RUN_DIR,
+            output='screen'),
+        ExecuteProcess(
+            cmd=['micrortps_agent', '-t', 'UDP'],
+            output='screen'),
 
 ])

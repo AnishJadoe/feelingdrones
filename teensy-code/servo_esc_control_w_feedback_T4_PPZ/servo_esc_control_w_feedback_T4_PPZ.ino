@@ -30,7 +30,8 @@ int serial_act_t4_missed_packets_in;
 
 // ----------------------------- ESC DEFINED VARIABLES-----------------------------------
 #define ESCPID_NB_ESC             4                 // Number of ESCs
-#define ESCPID_MAX_ESC            4                 // Max number of ESCs
+#define ESCPID_MAX_ESC            4               source ws/install/setup.bash
+  // Max number of ESCs
 
 #define MIN_DSHOT_CMD 100
 #define MAX_DSHOT_CMD 1999
@@ -107,17 +108,17 @@ int iter_counter_SERVO = 0;
 int servo_write_read_lock = 0; 
 
 //Reorganized the servos ID to match a previous design setup already on the vehicle. 
-int Servo_1_ID = 6; //Azimuth rotor 1
+int Servo_1_ID = 1; //Azimuth rotor 1
 int Servo_2_ID = 2; //Elevator rotor 1
 
-int Servo_3_ID = 8; //Azimuth rotor 4
+int Servo_3_ID = 3; //Azimuth rotor 4
 int Servo_4_ID = 4; //Elevator rotor 4
 
 int Servo_5_ID = 5; //Azimuth rotor 2
-int Servo_6_ID = 1; //Elevator rotor 2
+int Servo_6_ID = 6; //Elevator rotor 2
 
 int Servo_7_ID = 7; //Azimuth rotor 3
-int Servo_8_ID = 3; //Elevator rotor 3
+int Servo_8_ID = 8; //Elevator rotor 3
 
 volatile int Target_position_servo_1, Target_position_servo_2, Target_position_servo_3, Target_position_servo_4;
 volatile int Target_position_servo_5, Target_position_servo_6, Target_position_servo_7, Target_position_servo_8;
@@ -243,16 +244,20 @@ void serial_act_t4_parse_msg_in(void){
 
   //Apply received message to actuators: 
   if(time_no_connection_pixhawk < 5000 && myserial_act_t4_in.servo_arm_int == 1){
-  Target_position_servo_1 = (int) ( constrain(myserial_act_t4_in.servo_1_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
-  Target_position_servo_2 = (int) ( constrain(myserial_act_t4_in.servo_2_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
-  Target_position_servo_3 = (int) ( constrain(myserial_act_t4_in.servo_3_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
+  Target_position_servo_1 = (int) ( constrain(myserial_act_t4_in.servo_1_cmd_int, 0, SERVO_MAX_COMD) );
+  Target_position_servo_2 = (int) ( constrain(myserial_act_t4_in.servo_2_cmd_int, 0, SERVO_MAX_COMD) );
+  Target_position_servo_3 = (int) ( constrain(myserial_act_t4_in.servo_3_cmd_int, 0, SERVO_MAX_COMD) );
   Target_position_servo_4 = (int) ( constrain(myserial_act_t4_in.servo_4_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
   Target_position_servo_5 = (int) ( constrain(myserial_act_t4_in.servo_5_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
   Target_position_servo_6 = (int) ( constrain(myserial_act_t4_in.servo_6_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
   Target_position_servo_7 = (int) ( constrain(myserial_act_t4_in.servo_7_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
   Target_position_servo_8 = (int) ( constrain(myserial_act_t4_in.servo_8_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
 
-  Serial.println((String) "Target Position: " + Target_position_servo_4);
+  Serial.println((String) "Recieved pos for servo 1: " + Target_position_servo_1);
+  Serial.println((String) "Recieved pos for servo 2: " + Target_position_servo_2);
+  Serial.println((String) "Recieved pos for servo 3: " + Target_position_servo_3);
+
+
   servo_1_working_mode = myserial_act_t4_in.servo_1_working_mode_int;
   servo_2_working_mode = myserial_act_t4_in.servo_2_working_mode_int;
   servo_3_working_mode = myserial_act_t4_in.servo_3_working_mode_int;
@@ -1047,7 +1052,7 @@ void TorqueEnableDisableServos(void){
         iter_counter_SERVO = -1; 
         //Enable the writeReadServos loop to write to servos
         servo_write_read_lock = 0;
-        //Restart the restart_iter_counter_SERVO variable for the next time we want to enable the torque again
+        //Restart the restart_iter_counter_SERVO variable for the next time we want to enable the
         restart_iter_counter_SERVO_arm = 0;
         //Register the new servo state
         servo_status_torque_enable = 1;           
@@ -1224,17 +1229,14 @@ void writeReadServos(void){
 
     if(iter_counter_SERVO == 1){ //Send position target to servo 1 or wait in case of servo KILL       
       if(myserial_act_t4_in.servo_arm_int){
+        if (servo_1_working_mode == POSITION_CONTROL_MODE){
+        // Serial.println((String) "Sending position: " + Target_position_servo_1 + " to servo 1");
         u8_Data_1[0] = SBS_GOAL_POSITION_L;
         SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_1);
         SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
         SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
         SendInstructionServo1(Servo_1_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 1 
-
-        u8_Data_1[0] = SBS_GOAL_SPEED_L;
-        SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_speed_servo_1);
-        SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
-        SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
-        SendInstructionServo1(Servo_1_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 1 
+        }
       }
       else{
         delayMicroseconds(TIME_OF_SERVO_TX); 
@@ -1295,19 +1297,11 @@ void writeReadServos(void){
     if(iter_counter_SERVO == 3){ //Send position target to servo 2 or wait in case of servo KILL   
       if(myserial_act_t4_in.servo_arm_int)
       {
-        ReadWriteCurrentWorkingMode(Servo_2_ID, servo_1_working_mode );
 
         if (servo_2_working_mode == POSITION_CONTROL_MODE){
+        // Serial.println((String) "Sending position: " + Target_position_servo_2 + " to servo 2");
         u8_Data_1[0] = SBS_GOAL_POSITION_L;
         SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_2);
-        SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
-        SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
-        SendInstructionServo2(Servo_2_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 2 
-        }
-
-        if (servo_2_working_mode == SPEED_CONTROL_MODE){
-        u8_Data_1[0] = SBS_GOAL_SPEED_L;
-        SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_speed_servo_2);
         SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
         SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
         SendInstructionServo2(Servo_2_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 2 
@@ -1321,23 +1315,13 @@ void writeReadServos(void){
 
     if(iter_counter_SERVO == 4){ //Send position target to servo 6 or wait in case of servo KILL   
       if(myserial_act_t4_in.servo_arm_int)      {
-        ReadWriteCurrentWorkingMode(Servo_6_ID, servo_1_working_mode );
 
-        if (servo_2_working_mode == POSITION_CONTROL_MODE){
         u8_Data_1[0] = SBS_GOAL_POSITION_L;
         SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_2);
         SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
         SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
         SendInstructionServo6(Servo_6_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 2 
-        }
 
-        if (servo_2_working_mode == SPEED_CONTROL_MODE){
-        u8_Data_1[0] = SBS_GOAL_SPEED_L;
-        SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_speed_servo_2);
-        SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
-        SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
-        SendInstructionServo2(Servo_6_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 2 
-        }
 
       }
       else{
@@ -1385,12 +1369,15 @@ void writeReadServos(void){
 
     if(iter_counter_SERVO == 5){ //Send position target to servo 3 or wait in case of servo KILL   
       if(myserial_act_t4_in.servo_arm_int){  
+        if(servo_3_working_mode == POSITION_CONTROL_MODE){
+        // Serial.println((String) "Sending position: " + Target_position_servo_3 + " to servo 3");
         u8_Data_1[0] = SBS_GOAL_POSITION_L;
         SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_3);
         SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
         SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
         SendInstructionServo3(Servo_3_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 3 
-      }
+        }
+        }
       else{
         delayMicroseconds(TIME_OF_SERVO_TX); 
       }    
@@ -1452,7 +1439,6 @@ void writeReadServos(void){
         ReadWriteCurrentWorkingMode(Servo_4_ID, servo_4_working_mode );
 
         if (servo_4_working_mode == POSITION_CONTROL_MODE){
-        //Serial.println((String) "Pos = " + Target_position_servo_4);
         u8_Data_1[0] = SBS_GOAL_POSITION_L;
         SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_4);
         SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
@@ -1474,24 +1460,12 @@ void writeReadServos(void){
 
     if(iter_counter_SERVO == 8){ //Send position target to servo 8 or wait in case of servo KILL   
       if(myserial_act_t4_in.servo_arm_int)      {
-        ReadWriteCurrentWorkingMode(Servo_8_ID, servo_1_working_mode );
 
-        if (servo_2_working_mode == POSITION_CONTROL_MODE){
         u8_Data_1[0] = SBS_GOAL_POSITION_L;
         SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_2);
         SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
         SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
         SendInstructionServo8(Servo_8_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 2 
-        }
-
-        if (servo_2_working_mode == SPEED_CONTROL_MODE){
-        u8_Data_1[0] = SBS_GOAL_SPEED_L;
-        SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_speed_servo_2);
-        SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
-        SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
-        SendInstructionServo8(Servo_8_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 2 
-        }
-
       }
       else{
         delayMicroseconds(TIME_OF_SERVO_TX); 

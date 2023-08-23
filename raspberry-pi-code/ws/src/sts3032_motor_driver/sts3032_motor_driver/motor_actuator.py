@@ -10,6 +10,8 @@ from time import sleep
 from math import floor
 
 
+
+
 EIGHT_BIT_NUMBERS_STORAGE = 256
 
 # define Python user-defined exceptions
@@ -262,11 +264,32 @@ def create_payload_package():
 def create_serial_bufer(payload):
     return Buffer(payload)
 
+def set_servo_positions(serial_connection: serial.Serial, positions):
+    payload = create_payload_package()
+    payload.arm_servos.value = 1 
+
+    for idx, position in enumerate(positions):
+        servo_id = idx+1
+        getattr(payload,f'servo_angle_{servo_id}').value = position
+        print(f"Setting position for servo {servo_id} to {position}")
+        
+    buffer = create_serial_bufer(payload)
+    payload_out = struct.pack(struct_out, *buffer.get_data(), buffer.get_checksum())
+
+    serial_connection.write(START_BYTE)
+    serial_connection.write(payload_out)
+    serial_connection.flush()
+    sleep(0.1)
+
+
+    return 
+    
 class Servo():
+
     
     def __init__(self, servo_id, init_angle=0):
         self.servo_id = servo_id
-        self.trim_position = init_angle
+        self.trim_position = 0
         self._servo_angle = init_angle # deg * 100
         
     
@@ -299,21 +322,24 @@ class Servo():
         sleep(0.1)
         return
     
-    def set_servo_position(self, serial_connection, position):
+    def set_servo_position(self, serial_connection: serial.Serial, position):
         payload = create_payload_package()
         payload.arm_servos.value = 1 
         getattr(payload,f'servo_mode_{self.servo_id}').value = 0
         getattr(payload,f'servo_angle_{self.servo_id}').value = position
         buffer = create_serial_bufer(payload)
-
         payload_out = struct.pack(struct_out, *buffer.get_data(), buffer.get_checksum())
 
-        serial_connection.write(START_BYTE)
-        serial_connection.write(payload_out)
-        serial_connection.flush()
+        try:
+            serial_connection.write(START_BYTE)
+            serial_connection.write(payload_out)
+            serial_connection.flush()
 
-        print(f"Send position {position} to servo {self.servo_id}")
-        sleep(0.1)
+            print(f"Send position {position} to servo {self.servo_id}")
+            sleep(0.1)
+        except Exception as e:
+            print(e)
+
         return 
     
     def _get_rotation_count(self):
@@ -333,6 +359,7 @@ rotation_count = 0
 class MotorDriver(Node):
 
     def __init__(self, serial_connection):
+        print("Init Node")
         super().__init__('mpr121_sub')
         self.subscription = self.create_subscription(
             UInt16MultiArray,
@@ -348,12 +375,9 @@ class MotorDriver(Node):
     def listener_callback(self, msg):
         if not self.ser.isOpen():
             self.ser.open()
-
         position_references = msg.data
-        self.get_logger().info(f"Got position references {position_references}")
-        for servo_id,reference in enumerate(position_references):
-            servo = getattr(self,f'servo_{servo_id}')
-            servo.set_servo_position(self.ser, reference)
+        set_servo_positions(self.ser, position_references)
+
         self.ser.close()
         return
 

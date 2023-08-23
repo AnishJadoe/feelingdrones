@@ -1,7 +1,6 @@
 from setuptools import setup
 
-package_name = 'sts302_motor_driver'
-
+package_name = 'sts3032_motor_driver'
 setup(
     name=package_name,
     version='0.0.0',
@@ -20,6 +19,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'actuator = sts3032_motor_driver.motor_actuator:main',
+            'controller = sts3032_motor_driver.motor_controller:main',
         ],
     },
 )

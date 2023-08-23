@@ -21,7 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'talker = mpr121_pubsub.publisher_function:main',
-            'listener = mpr121_pubsub.subscriber_function:main'
+            'listener = mpr121_pubsub.subscriber_function:main',
             
         ],
     },
