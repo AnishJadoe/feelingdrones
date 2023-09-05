@@ -5,8 +5,8 @@
 
 // -------------------------- COMMUNICATION DEFINED VARIABLES-----------------------------
 
-#define COMMUNICATION_SERIAL Serial4
-#define COMMUNICATION_SERIAL_BAUD 150000
+#define COMMUNICATION_SERIAL Serial
+#define COMMUNICATION_SERIAL_BAUD 9600
 #define COMM_REFRESH_TIME 2000 // ~500 Hz message loop 
 #define PIN_LED_T4 13
 
@@ -142,7 +142,7 @@ int restart_iter_counter_SERVO_arm = 0, restart_iter_counter_SERVO_disarm = 0;
 
 // ------------------------------ GENERAL VARIABLES---------------------------------------
 
-#define DEBUG_serial Serial
+#define DEBUG_serial Serial1
 #define DEBUG_serial_baud 115200
 
 elapsedMicros timer_count_servo = 0, timer_count_main = 0, timer_count_esc = 0;
@@ -188,6 +188,7 @@ void setup(void)
 void loop(void) 
 {
 
+  COMMUNICATION_SERIAL.println("Hello there");
   TorqueEnableDisableServos();
 
   writeReadServos();

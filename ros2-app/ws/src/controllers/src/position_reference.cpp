@@ -83,36 +83,39 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
         return;
     }
 
-    if(t>10 && !this->_taken_off){
-        this->takeoff();
-    }
+    // if(t>10 && !this->_taken_off){
+    //     this->takeoff();
+    // }
 
-    if (t >= (20 + period * this->_period_counter) && t < (30 + period * this->_period_counter)) {
-        this->_ref_pos.x() = 10;
-        this->_ref_pos.y() = 0;
-
-        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
-    }
     if (t >= (30 + period * this->_period_counter) && t < (40 + period * this->_period_counter)) {
-        this->_ref_pos.x() = 10;
-        this->_ref_pos.y() = 10;
+        this->_ref_pos.x() = 2;
+        this->_ref_pos.y() = 0;
+        this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
     if (t >= (40 + period * this->_period_counter) && t < (50 + period * this->_period_counter)) {
-        this->_ref_pos.x() = 0;
-        this->_ref_pos.y() = 10;
+        this->_ref_pos.x() = 2;
+        this->_ref_pos.y() = 2;
+        this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
     if (t >= (50 + period * this->_period_counter) && t < (60 + period * this->_period_counter)) {
         this->_ref_pos.x() = 0;
-        this->_ref_pos.y() = 0;
+        this->_ref_pos.y() = 2;
+        this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
+    if (t >= (60 + period * this->_period_counter) && t < (70 + period * this->_period_counter)) {
+        this->_ref_pos.x() = 0;
+        this->_ref_pos.y() = 0;
+        this->_ref_pos.z() = -1.5;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
 
-    if (t >= 70 + period * this->_period_counter){
+    if (t >= 80 + period * this->_period_counter){
         this->_period_counter++;
         std::cout << "Incrementing counter to: " << _period_counter << std::endl;
     }
