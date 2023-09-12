@@ -1,4 +1,4 @@
-#include "position_reference.hpp"
+#include "position_hover.hpp"
 #include <iostream>
 
 
@@ -44,8 +44,9 @@ BaseReferencePositionPub::BaseReferencePositionPub()
 void BaseReferencePositionPub::_timer_callback()
 {
     
-    if (_offboard_setpoint_counter == 20) 
+    if (_offboard_setpoint_counter == 50) 
     {
+        RCLCPP_INFO(this->get_logger(), "In Here");
         /* On the real system we want to arm and change mode using the remote control
             Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
         // Change to Offboard mode after 10 setpoints
@@ -60,8 +61,8 @@ void BaseReferencePositionPub::_timer_callback()
     this->_publish_offboard_control_mode();
     this->_publish_trajectory_setpoint();
 
-    // stop the counter after reaching 11
-    if (_offboard_setpoint_counter < 21) {
+    // stop the counter after reaching 10
+    if (_offboard_setpoint_counter < 51) {
         _offboard_setpoint_counter++;
     }
 
@@ -76,49 +77,24 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
     double period = 50;
 
     /* After mission time ran out */
-    if(t > 1000 && !this->_landed)
+    if(t > 240 && !this->_landed)
     {
         this->_landed = true;
         this->land();
         return;
     }
 
-    // if(t>10 && !this->_taken_off){
+    // if(t>20 && !this->_taken_off){
     //     this->takeoff();
     // }
 
-    if (t >= (30 + period * this->_period_counter) && t < (40 + period * this->_period_counter)) {
-        this->_ref_pos.x() = 2;
-        this->_ref_pos.y() = 0;
-        this->_ref_pos.z() = -1.5;
 
-        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
-    }
-    if (t >= (40 + period * this->_period_counter) && t < (50 + period * this->_period_counter)) {
-        this->_ref_pos.x() = 2;
-        this->_ref_pos.y() = 2;
-        this->_ref_pos.z() = -1.5;
+    if (t > 20) {
+    this->_ref_pos.z() = -1.5;
 
-        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
-    }
-    if (t >= (50 + period * this->_period_counter) && t < (60 + period * this->_period_counter)) {
-        this->_ref_pos.x() = 0;
-        this->_ref_pos.y() = 2;
-        this->_ref_pos.z() = -1.5;
-
-        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
-    }
-    if (t >= (60 + period * this->_period_counter) && t < (70 + period * this->_period_counter)) {
-        this->_ref_pos.x() = 0;
-        this->_ref_pos.y() = 0;
-        this->_ref_pos.z() = -1.5;
-        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << " z :" << this->_ref_pos.z() << std::endl;
     }
 
-    if (t >= 80 + period * this->_period_counter){
-        this->_period_counter++;
-        std::cout << "Incrementing counter to: " << _period_counter << std::endl;
-    }
 
     px4_msgs::msg::TrajectorySetpoint msg{};
     msg.position = {this->_ref_pos.x(),

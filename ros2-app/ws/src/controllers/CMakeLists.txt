@@ -24,14 +24,24 @@ include_directories(
   
 add_executable(position_reference src/position_reference.cpp)
 ament_target_dependencies(position_reference rclcpp geometry_msgs px4_msgs px4_ros_com Eigen3)
+add_executable(position_hover src/position_hover.cpp)
+ament_target_dependencies(position_hover rclcpp geometry_msgs px4_msgs px4_ros_com Eigen3)
+
 target_include_directories(position_reference PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/controllers>
   $<INSTALL_INTERFACE:include>)
 target_compile_features(position_reference PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
+target_include_directories(position_hover PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/controllers>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(position_hover PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
 install(TARGETS position_reference
   DESTINATION lib/${PROJECT_NAME})
 
+install(TARGETS position_hover
+DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

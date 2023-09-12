@@ -383,7 +383,7 @@ class MotorDriver(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    serial_connection = serial.Serial(port='/dev/serial0', baudrate=150000,timeout=None, bytesize=serial.EIGHTBITS)
+    serial_connection = serial.Serial(port='/dev/ttyACM0', baudrate=150000,timeout=None, bytesize=serial.EIGHTBITS)
     sleep(0.2)
     motor_driver = MotorDriver(serial_connection)
 
