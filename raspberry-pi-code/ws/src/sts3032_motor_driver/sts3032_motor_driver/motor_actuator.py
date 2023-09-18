@@ -10,7 +10,8 @@ from time import sleep
 from math import floor
 
 
-
+MAX_SERVO_COMMAND = 4096*4
+MIN_SERVO_COMMAND = 410
 
 EIGHT_BIT_NUMBERS_STORAGE = 256
 
@@ -270,7 +271,11 @@ def set_servo_positions(serial_connection: serial.Serial, positions):
 
     for idx, position in enumerate(positions):
         servo_id = idx+1
+        # Ensure that servo positions are within bounds
+        # position = max(position, MIN_SERVO_COMMAND)
+        # position = min(position,MAX_SERVO_COMMAND)
         getattr(payload,f'servo_angle_{servo_id}').value = position
+
         print(f"Setting position for servo {servo_id} to {position}")
         
     buffer = create_serial_bufer(payload)

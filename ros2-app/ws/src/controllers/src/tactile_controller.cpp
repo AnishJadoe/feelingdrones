@@ -19,9 +19,13 @@ BaseReferencePositionPub::BaseReferencePositionPub()
         "/fmu/out/timesync_status", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_timesync_callback, this, std::placeholders::_1));
     this->_reference_subscription = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/base_reference", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_reference_callback, this, std::placeholders::_1));
-    
+
+    this->_tactile_sensor_subscription = this->create_subscription<std_msgs::msg::Int8MultiArray>(
+        "/tactile_output", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_tactile_callback, this, std::placeholders::_1))
+
     this->_offboard_publisher = this->create_publisher<px4_msgs::msg::OffboardControlMode>(
         "/fmu/in/offboard_control_mode", 10);
+
     this->_trajectory_publisher = this->create_publisher<px4_msgs::msg::TrajectorySetpoint>(
         "/fmu/in/trajectory_setpoint", 10);
 
@@ -31,8 +35,9 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, 0.0};
+    this->_ref_pos = {0.0, 0.0, -1.5};
     this->_ref_yaw = 0.0;
+    this->_tactile_state = {0,0,0,0,0,0,0,0,0,0,0,0}
 
     //Start counter
     this->_period_counter = 0;
@@ -46,14 +51,13 @@ void BaseReferencePositionPub::_timer_callback()
     
     if (_offboard_setpoint_counter == 50) 
     {
-        RCLCPP_INFO(this->get_logger(), "Lets go");
         /* On the real system we want to arm and change mode using the remote control
             Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
         // Change to Offboard mode after 10 setpoints
-        // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+        this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-        // // Arm the vehicle
-        // this->arm();
+        // Arm the vehicle
+        this->arm();
 
     }
 
@@ -106,10 +110,12 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
 
 }
 
+
 /**
  * @brief Publish the offboard control mode.
  *        For this example, only position and altitude controls are active.
  */
+
 void BaseReferencePositionPub::_publish_offboard_control_mode()
 {
     px4_msgs::msg::OffboardControlMode msg{};
@@ -120,6 +126,14 @@ void BaseReferencePositionPub::_publish_offboard_control_mode()
     msg.body_rate = false;
     msg.timestamp = this->get_timestamp();
     _offboard_publisher->publish(msg);
+}
+
+void BaseReferencePositionPub::_tactile_callback(std_msgs::msg::Int8MultiArray::SharedPtr msg)
+{
+    this->_tactile_state = msg->tactile_state;
+    RCLCPP_DEBUG(node->get_logger(), "My log message %d", 4);
+
+
 }
 
 void BaseReferencePositionPub::_status_callback(const px4_msgs::msg::VehicleStatus::SharedPtr msg)
