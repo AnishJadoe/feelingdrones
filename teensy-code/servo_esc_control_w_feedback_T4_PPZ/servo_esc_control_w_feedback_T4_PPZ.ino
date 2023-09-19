@@ -188,7 +188,7 @@ void setup(void)
 void loop(void) 
 {
 
-  COMMUNICATION_SERIAL.println("Hello there");
+  // COMMUNICATION_SERIAL.println("Hello there");
   TorqueEnableDisableServos();
 
   writeReadServos();
@@ -254,9 +254,9 @@ void serial_act_t4_parse_msg_in(void){
   Target_position_servo_7 = (int) ( constrain(myserial_act_t4_in.servo_7_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
   Target_position_servo_8 = (int) ( constrain(myserial_act_t4_in.servo_8_cmd_int * (ONE_ROTATION_ANGLE) / 4, 0, SERVO_MAX_COMD) );
 
-  Serial.println((String) "Recieved pos for servo 1: " + Target_position_servo_1);
-  Serial.println((String) "Recieved pos for servo 2: " + Target_position_servo_2);
-  Serial.println((String) "Recieved pos for servo 3: " + Target_position_servo_3);
+  // Serial.println((String) "Recieved pos for servo 1: " + Target_position_servo_1);
+  // Serial.println((String) "Recieved pos for servo 2: " + Target_position_servo_2);
+  // Serial.println((String) "Recieved pos for servo 3: " + Target_position_servo_3);
 
 
   servo_1_working_mode = myserial_act_t4_in.servo_1_working_mode_int;
