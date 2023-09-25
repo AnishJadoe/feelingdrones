@@ -1,4 +1,5 @@
 import time
+import numpy as np
 # Import MPR121 module.
 import rclpy
 from rclpy.node import Node
@@ -23,16 +24,18 @@ class MotorController(Node):
 
     
     def listener_callback(self, msg):
+        touch_data = np.array([msg])
+        
+
 
         return
+    
     def timer_callback(self):
         if self.counter == self.max_count:
             self.counter = self.get_parameter('init_count').value
 
 
         position = 1042 * self.counter
-
-
 
         msg = UInt16MultiArray()
         msg.data = [position,position,position]

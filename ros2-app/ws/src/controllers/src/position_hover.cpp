@@ -31,7 +31,7 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, 0.0};
+    this->_ref_pos = {0.0, 0.0, -1.5};
     this->_ref_yaw = 0.0;
 
     //Start counter
@@ -44,16 +44,16 @@ BaseReferencePositionPub::BaseReferencePositionPub()
 void BaseReferencePositionPub::_timer_callback()
 {
     
-    if (_offboard_setpoint_counter == 50) 
+    if (_offboard_setpoint_counter == 20) 
     {
         RCLCPP_INFO(this->get_logger(), "Lets go");
         /* On the real system we want to arm and change mode using the remote control
             Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
         // Change to Offboard mode after 10 setpoints
-        // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+        this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-        // // Arm the vehicle
-        // this->arm();
+        // Arm the vehicle
+        this->arm();
 
     }
 
@@ -62,7 +62,7 @@ void BaseReferencePositionPub::_timer_callback()
     this->_publish_trajectory_setpoint();
 
     // stop the counter after reaching 10
-    if (_offboard_setpoint_counter < 51) {
+    if (_offboard_setpoint_counter < 21) {
         _offboard_setpoint_counter++;
     }
 
@@ -90,7 +90,9 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
 
 
     if (t > 20) {
-    this->_ref_pos.z() = -1;
+    this->_ref_pos.z() = -1.5;
+    this->_ref_pos.y() = 1;
+    this->_ref_pos.x() = 1;
 
     std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << " z :" << this->_ref_pos.z() << std::endl;
     }

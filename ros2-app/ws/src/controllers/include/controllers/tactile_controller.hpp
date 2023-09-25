@@ -7,6 +7,7 @@
 #include "px4_msgs/msg/vehicle_command.hpp"
 #include "px4_msgs/msg/timesync_status.hpp"
 #include "px4_ros_com/frame_transforms.h"
+#include "std_msgs/msg/int8_multi_array.hpp"
 
 using namespace std::chrono_literals;
 
@@ -44,7 +45,7 @@ private:
     // Current High Level Reference
     Eigen::Vector3d _ref_pos;
     float _ref_yaw;
-    int8_t _tactile_state [12];
+    int8_t _tactile_state[12];
 
     /* Callback Functions */
     void _timer_callback();

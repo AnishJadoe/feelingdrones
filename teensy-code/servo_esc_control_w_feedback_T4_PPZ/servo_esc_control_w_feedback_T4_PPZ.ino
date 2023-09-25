@@ -687,7 +687,8 @@ void SendInstructionServo1(byte u8_ServoID, byte u8_Instruction, byte* u8_Params
     SERVO1_serialEnableOpenDrain(false);
     SERVO1_serial.write(buffer_tx, buffer_tx_idx);
     SERVO1_serialEnableOpenDrain(true);
-    
+
+
     #ifdef VERBOSE_MESSAGE
       PrintHex("Instruction sent servo 1: ", buffer_tx, buffer_tx_idx);
     #endif
@@ -1230,14 +1231,14 @@ void writeReadServos(void){
 
     if(iter_counter_SERVO == 1){ //Send position target to servo 1 or wait in case of servo KILL       
       if(myserial_act_t4_in.servo_arm_int){
-        if (servo_1_working_mode == POSITION_CONTROL_MODE){
-        // Serial.println((String) "Sending position: " + Target_position_servo_1 + " to servo 1");
-        u8_Data_1[0] = SBS_GOAL_POSITION_L;
-        SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_1);
-        SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
-        SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
-        SendInstructionServo1(Servo_1_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 1 
-        }
+     
+      Serial.println((String) "Sending position: " + Target_position_servo_1 + " to servo 1");
+      u8_Data_1[0] = SBS_GOAL_POSITION_L;
+      SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_1);
+      SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
+      SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
+      SendInstructionServo1(Servo_1_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 1 
+ 
       }
       else{
         delayMicroseconds(TIME_OF_SERVO_TX); 
@@ -1298,16 +1299,12 @@ void writeReadServos(void){
     if(iter_counter_SERVO == 3){ //Send position target to servo 2 or wait in case of servo KILL   
       if(myserial_act_t4_in.servo_arm_int)
       {
-
-        if (servo_2_working_mode == POSITION_CONTROL_MODE){
         // Serial.println((String) "Sending position: " + Target_position_servo_2 + " to servo 2");
         u8_Data_1[0] = SBS_GOAL_POSITION_L;
         SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_2);
         SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
         SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
         SendInstructionServo2(Servo_2_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 2 
-        }
-
       }
       else{
         delayMicroseconds(TIME_OF_SERVO_TX); 
@@ -1370,14 +1367,12 @@ void writeReadServos(void){
 
     if(iter_counter_SERVO == 5){ //Send position target to servo 3 or wait in case of servo KILL   
       if(myserial_act_t4_in.servo_arm_int){  
-        if(servo_3_working_mode == POSITION_CONTROL_MODE){
         // Serial.println((String) "Sending position: " + Target_position_servo_3 + " to servo 3");
         u8_Data_1[0] = SBS_GOAL_POSITION_L;
         SplitByte(&u8_Data_1[1],&u8_Data_1[2],Target_position_servo_3);
         SplitByte(&u8_Data_1[4],&u8_Data_1[3],0);
         SplitByte(&u8_Data_1[6],&u8_Data_1[5],0);
         SendInstructionServo3(Servo_3_ID, INST_WRITE, u8_Data_1, sizeof(u8_Data_1)); //Servo 3 
-        }
         }
       else{
         delayMicroseconds(TIME_OF_SERVO_TX); 
@@ -1537,7 +1532,7 @@ void writeReadServos(void){
       #endif
       myserial_act_t4_out.servo_1_update_time_us = (int16_t) pos1_time_uS_counter;
       if(255 - bitsum_servo == buffer_servo[7] && buffer_servo[2] == Servo_1_ID){
-        myserial_act_t4_out.servo_1_angle_int = (int16_t) ( ( CompactBytes(buffer_servo[6],buffer_servo[5]) - SERVO_MAX_COMD/2 ) *36000/SERVO_MAX_COMD );
+        myserial_act_t4_out.servo_1_angle_int = (int16_t) CompactBytes(buffer_servo[6],buffer_servo[5]);
         pos1_time_uS_counter = 0;
       }
       else{
@@ -1595,7 +1590,7 @@ void writeReadServos(void){
       #endif
       myserial_act_t4_out.servo_2_update_time_us = (int16_t) pos2_time_uS_counter;
       if(255 - bitsum_servo == buffer_servo[7] && buffer_servo[2] == Servo_2_ID){
-        myserial_act_t4_out.servo_2_angle_int = (int16_t) ( ( CompactBytes(buffer_servo[6],buffer_servo[5]) - SERVO_MAX_COMD/2 ) *36000/SERVO_MAX_COMD );
+        myserial_act_t4_out.servo_2_angle_int = (int16_t) CompactBytes(buffer_servo[6],buffer_servo[5]);
         pos2_time_uS_counter = 0;
       }
       else{
@@ -1653,7 +1648,7 @@ void writeReadServos(void){
       #endif
       myserial_act_t4_out.servo_3_update_time_us = (int16_t) pos3_time_uS_counter;
       if(255 - bitsum_servo == buffer_servo[7] && buffer_servo[2] == Servo_3_ID){
-        myserial_act_t4_out.servo_3_angle_int = (int16_t) ( ( CompactBytes(buffer_servo[6],buffer_servo[5]) - SERVO_MAX_COMD/2 ) *36000/SERVO_MAX_COMD );
+        myserial_act_t4_out.servo_3_angle_int = (int16_t) CompactBytes(buffer_servo[6],buffer_servo[5]);
         pos3_time_uS_counter = 0;
       }
       else{

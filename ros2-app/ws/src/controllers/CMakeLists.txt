@@ -8,6 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(std_msgs)
 find_package(std_srvs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -28,8 +29,8 @@ ament_target_dependencies(position_reference rclcpp geometry_msgs px4_msgs px4_r
 add_executable(position_hover src/position_hover.cpp)
 ament_target_dependencies(position_hover rclcpp geometry_msgs px4_msgs px4_ros_com Eigen3)
 
-# add_executable(tactile_controller src/tactile_controller.cpp)
-# ament_target_dependencies(position_hover rclcpp geometry_msgs px4_msgs px4_ros_com Eigen3)
+add_executable(tactile_controller src/tactile_controller.cpp)
+ament_target_dependencies(tactile_controller rclcpp std_msgs geometry_msgs px4_msgs px4_ros_com Eigen3)
 
 target_include_directories(position_reference PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/controllers>
@@ -41,10 +42,10 @@ target_include_directories(position_hover PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(position_hover PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
-# target_include_directories(tactile_controller PUBLIC
-#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/controllers>
-#   $<INSTALL_INTERFACE:include>)
-# target_compile_features(tactile_controller PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_include_directories(tactile_controller PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/controllers>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(tactile_controller PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 install(TARGETS position_reference
   DESTINATION lib/${PROJECT_NAME})
@@ -52,8 +53,8 @@ install(TARGETS position_reference
 install(TARGETS position_hover
 DESTINATION lib/${PROJECT_NAME})
 
-# install(TARGETS tactile_controller
-# DESTINATION lib/${PROJECT_NAME})
+install(TARGETS tactile_controller
+DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

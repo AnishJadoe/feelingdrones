@@ -1,6 +1,6 @@
-#include "position_hover.hpp"
+#include "tactile_controller.hpp"
 #include <iostream>
-
+#include <vector>
 
 BaseReferencePositionPub::BaseReferencePositionPub()
     : Node("position_reference"), _offboard_setpoint_counter(0)
@@ -21,7 +21,7 @@ BaseReferencePositionPub::BaseReferencePositionPub()
         "/base_reference", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_reference_callback, this, std::placeholders::_1));
 
     this->_tactile_sensor_subscription = this->create_subscription<std_msgs::msg::Int8MultiArray>(
-        "/tactile_output", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_tactile_callback, this, std::placeholders::_1))
+        "/tactile_output", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_tactile_callback, this, std::placeholders::_1));
 
     this->_offboard_publisher = this->create_publisher<px4_msgs::msg::OffboardControlMode>(
         "/fmu/in/offboard_control_mode", 10);
@@ -37,7 +37,7 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     /* Init Ref Pose */
     this->_ref_pos = {0.0, 0.0, -1.5};
     this->_ref_yaw = 0.0;
-    this->_tactile_state = {0,0,0,0,0,0,0,0,0,0,0,0}
+    // this->_tactile_state = {0,0,0,0,0,0,0,0,0,0,0,0};
 
     //Start counter
     this->_period_counter = 0;
@@ -128,12 +128,17 @@ void BaseReferencePositionPub::_publish_offboard_control_mode()
     _offboard_publisher->publish(msg);
 }
 
-void BaseReferencePositionPub::_tactile_callback(std_msgs::msg::Int8MultiArray::SharedPtr msg)
-{
-    this->_tactile_state = msg->tactile_state;
-    RCLCPP_DEBUG(node->get_logger(), "My log message %d", 4);
-
-
+void BaseReferencePositionPub::_tactile_callback(std_msgs::msg::Int8MultiArray::SharedPtr msg) {
+    // Check if the size of the received vector matches the expected size (12 in this case)
+    if (msg->data.size() == 12) {
+        // Convert the vector to an int8_t array
+        for (size_t i = 0; i < 12; ++i) {
+            this->_tactile_state[i] = static_cast<int8_t>(msg->data[i]);
+        }
+    } else {
+        // Handle the case where the vector size is not as expected
+        // You might want to log an error or take appropriate action here
+    }
 }
 
 void BaseReferencePositionPub::_status_callback(const px4_msgs::msg::VehicleStatus::SharedPtr msg)
