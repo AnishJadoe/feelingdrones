@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mpr121_mocker = data_mocker.mpr121_mocker:main'
+            'mpr121_mocker = data_mocker.mpr121_mocker:main',
+            'gripper_mocker = data_mocker.gripper_mocker:main'
         ],
     },
 )
