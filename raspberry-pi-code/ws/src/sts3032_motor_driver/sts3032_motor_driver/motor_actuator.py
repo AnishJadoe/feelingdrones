@@ -3,15 +3,19 @@ import dataclasses
 from typing import List, Optional, Tuple, Union
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import UInt16MultiArray
+from std_msgs.msg import Int8
 import serial
 import struct
 from time import sleep
 from math import floor
 
+START_BYTE = b'\x9A'
+struct_out = "<2b18h4B1f2B"
+struct_in = "<36h1f2B"
+payload_in_size = struct.calcsize(struct_in)
 
-MAX_SERVO_COMMAND = 4096*4
-MIN_SERVO_COMMAND = 410
+MAX_SERVO_COMMAND = 10000
+MIN_SERVO_COMMAND = 100
 
 EIGHT_BIT_NUMBERS_STORAGE = 256
 
@@ -35,21 +39,6 @@ class UInt8():
     def __init__(self,value):
         self.UPPER_LIMIT = 256
         self.LOWER_LIMIT = 0 
-
-        if value < self.LOWER_LIMIT or value > self.UPPER_LIMIT:
-            raise InvalidNumberException(f"Integer has to be between {self.LOWER_LIMIT} and {self.UPPER_LIMIT}")
-        self.value = value
-    
-    def float_to_array(self):
-        first_byte = self.value
-        return (first_byte)
-    
-
-class Int8():
-
-    def __init__(self,value):
-        self.UPPER_LIMIT = 128
-        self.LOWER_LIMIT = -127
 
         if value < self.LOWER_LIMIT or value > self.UPPER_LIMIT:
             raise InvalidNumberException(f"Integer has to be between {self.LOWER_LIMIT} and {self.UPPER_LIMIT}")
@@ -265,34 +254,10 @@ def create_payload_package():
 def create_serial_bufer(payload):
     return Buffer(payload)
 
-def set_servo_positions(serial_connection: serial.Serial, positions):
-    payload = create_payload_package()
-    payload.arm_servos.value = 1 
-
-    for idx, position in enumerate(positions):
-        servo_id = idx+1
-        # Ensure that servo positions are within bounds
-        # position = max(position, MIN_SERVO_COMMAND)
-        # position = min(position,MAX_SERVO_COMMAND)
-        getattr(payload,f'servo_angle_{servo_id}').value = position
-
-        print(f"Setting position for servo {servo_id} to {position}")
-        
-    buffer = create_serial_bufer(payload)
-    payload_out = struct.pack(struct_out, *buffer.get_data(), buffer.get_checksum())
-
-    serial_connection.write(START_BYTE)
-    serial_connection.write(payload_out)
-    serial_connection.flush()
-    sleep(0.1)
-
-
-    return 
-    
 class Servo():
 
     
-    def __init__(self, servo_id, init_angle=0):
+    def __init__(self, servo_id, init_angle=Int16(0)):
         self.servo_id = servo_id
         self.trim_position = 0
         self._servo_angle = init_angle # deg * 100
@@ -327,69 +292,133 @@ class Servo():
         sleep(0.1)
         return
     
-    def set_servo_position(self, serial_connection: serial.Serial, position):
-        payload = create_payload_package()
-        payload.arm_servos.value = 1 
-        getattr(payload,f'servo_mode_{self.servo_id}').value = 0
-        getattr(payload,f'servo_angle_{self.servo_id}').value = position
-        buffer = create_serial_bufer(payload)
-        payload_out = struct.pack(struct_out, *buffer.get_data(), buffer.get_checksum())
 
-        try:
-            serial_connection.write(START_BYTE)
-            serial_connection.write(payload_out)
-            serial_connection.flush()
-
-            print(f"Send position {position} to servo {self.servo_id}")
-            sleep(0.1)
-        except Exception as e:
-            print(e)
-
-        return 
     
     def _get_rotation_count(self):
         return floor(self.total_rotation / 36000)
     
-START_BYTE = b'\x9A'
-struct_out = "<2b18h4B1f2B"
-struct_in = "<36h1f2B"
-payload_in_size = struct.calcsize(struct_in)
+def set_servo_positions(serial_connection: serial.Serial, positions, servos: List[Servo]):
+    payload = create_payload_package()
+    payload.arm_servos.value = 1 
+
+    for idx, position in enumerate(positions):
+        servo_id = idx+1
+        # Ensure that servo positions are within bounds
+        position = min(position,MAX_SERVO_COMMAND)
+        setattr(payload,f'servo_angle_{servo_id}', Int16(position)) 
+        print(f"Setting position for servo {servo_id} to {position}")
         
+    buffer = create_serial_bufer(payload)
+    payload_out = struct.pack(struct_out, *buffer.get_data(), buffer.get_checksum())
 
-init_servo = True
-recieving_data = False
-running = True 
-rotation_count = 0
+    serial_connection.write(START_BYTE)
+    serial_connection.write(payload_out)
+    serial_connection.flush()
+    sleep(0.1)
 
+    return    
+
+MAX_GRIPPER_COMMAND = 6144
+OPEN = 1
+CLOSED = 0 
+IDLE = -1
+
+SETPOINT_COUNTER = 10
 class MotorDriver(Node):
 
     def __init__(self, serial_connection):
         print("Init Node")
-        super().__init__('mpr121_sub')
+        super().__init__('motor_driver')
+
+        timer_period = 0.1  # seconds
+        self.timer = self.create_timer(timer_period, self.timer_callback)
+
         self.subscription = self.create_subscription(
-            UInt16MultiArray,
-            '/motor_position_reference',
+            Int8,
+            '/gripper/in/gripper_state',
             self.listener_callback,
             10)
-        self.ser = serial_connection
+        self.publisher = self.create_publisher(
+            Int8,
+            '/gripper/out/gripper_state',
+            10
+        )
+        self.serial_connection = serial_connection
         self.subscription  # prevent unused variable warning
         self.servo_1 = Servo(servo_id=1)
         self.servo_2 = Servo(servo_id=2)
         self.servo_3 = Servo(servo_id=3)
+        self.gripper_state = IDLE
 
+    def timer_callback(self):
+        msg = Int8()
+        msg.data = self.gripper_state
+        self.publisher.publish(msg)
+        
     def listener_callback(self, msg):
         if not self.ser.isOpen():
             self.ser.open()
-        position_references = msg.data
-        set_servo_positions(self.ser, position_references)
+        command = msg.data
+
+        if command == OPEN and self.gripper_state != OPEN:
+            for i in range(10):
+                self.open_gripper()
+
+        if command == CLOSED and self.gripper_state != CLOSED:
+            for i in range(10):
+                self.close_gripper()
 
         self.ser.close()
+
         return
+
+    def open_gripper(self):
+        payload = create_payload_package()
+        payload.arm_servos.value = 1 
+        positions = [MAX_GRIPPER_COMMAND,MAX_GRIPPER_COMMAND,MAX_GRIPPER_COMMAND]
+        for idx, position in enumerate(positions):
+            servo_id = idx+1
+            setattr(payload,f'servo_angle_{servo_id}', Int16(position)) 
+            print(f"Setting position for servo {servo_id} to {position}")
+            
+        buffer = create_serial_bufer(payload)
+        payload_out = struct.pack(struct_out, *buffer.get_data(), buffer.get_checksum())
+
+        self.serial_connection.write(START_BYTE)
+        self.serial_connection.write(payload_out)
+        self.serial_connection.flush()
+        sleep(1)
+        self.gripper_state = OPEN
+        return   
+
+    def close_gripper(self):
+        payload = create_payload_package()
+        payload.arm_servos.value = 1 
+        positions = [0,0,0]
+        for idx, position in enumerate(positions):
+            servo_id = idx+1
+            setattr(payload,f'servo_angle_{servo_id}', Int16(position)) 
+            print(f"Setting position for servo {servo_id} to {position}")
+            
+        buffer = create_serial_bufer(payload)
+        payload_out = struct.pack(struct_out, *buffer.get_data(), buffer.get_checksum())
+
+        self.serial_connection.write(START_BYTE)
+        self.serial_connection.write(payload_out)
+        self.serial_connection.flush()
+        sleep(1)
+        self.gripper_state = CLOSED
+        return    
 
 def main(args=None):
     rclpy.init(args=args)
-    serial_connection = serial.Serial(port='/dev/ttyACM0', baudrate=150000,timeout=None, bytesize=serial.EIGHTBITS)
-    sleep(0.2)
+    serial_connection = serial.Serial(port='/dev/ttyACM0', baudrate=9600,timeout=None, bytesize=serial.EIGHTBITS)
+    sleep(1)
+    print("Connection Opened")
+    sleep(1)
+    serial_connection.read(1)
+    print("Connected")
+
     motor_driver = MotorDriver(serial_connection)
 
     rclpy.spin(motor_driver)
@@ -404,6 +433,8 @@ def main(args=None):
 if __name__ == '__main__':
     main()
 
-       
+
+
+        
 
 

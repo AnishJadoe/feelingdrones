@@ -92,7 +92,7 @@ private:
     void _grasp_event_handler();
     void _evaluate_event_handler();
     
-    void _gripper_callback(const std_msgs::msg::Int8::SharedPtr msg);
+    void _update_gripper_state_callback(const std_msgs::msg::Int8::SharedPtr msg);
 
     void _status_callback(const px4_msgs::msg::VehicleStatus::SharedPtr msg);
 
