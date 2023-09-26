@@ -91,8 +91,8 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
 
     if (t > 20) {
     this->_ref_pos.z() = -1.5;
-    this->_ref_pos.y() = 1;
-    this->_ref_pos.x() = 1;
+    this->_ref_pos.y() = 0;
+    this->_ref_pos.x() = 0;
 
     std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << " z :" << this->_ref_pos.z() << std::endl;
     }

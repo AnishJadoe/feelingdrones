@@ -19,16 +19,16 @@ BaseReferencePositionPub::BaseReferencePositionPub()
         "/fmu/out/timesync_status", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_timesync_callback, this, std::placeholders::_1));
     this->_reference_subscription = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         "/base_reference", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_reference_callback, this, std::placeholders::_1));
-
+    this->_vehicle_odometry_subscription = this->create_subscription<px4_msgs::msg::VehicleOdometry>(
+        "/fmu/out/vehicle_odometry", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_vehicle_odometry_callback, this, std::placeholders::_1));
     this->_tactile_sensor_subscription = this->create_subscription<std_msgs::msg::Int8MultiArray>(
         "/tactile_output", rclcpp::SensorDataQoS(), std::bind(&BaseReferencePositionPub::_tactile_callback, this, std::placeholders::_1));
 
+
     this->_offboard_publisher = this->create_publisher<px4_msgs::msg::OffboardControlMode>(
         "/fmu/in/offboard_control_mode", 10);
-
     this->_trajectory_publisher = this->create_publisher<px4_msgs::msg::TrajectorySetpoint>(
         "/fmu/in/trajectory_setpoint", 10);
-
     this->_vehicle_command_pub = this->create_publisher<px4_msgs::msg::VehicleCommand>(
         "/fmu/in/vehicle_command", 10);
 
@@ -37,7 +37,7 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     /* Init Ref Pose */
     this->_ref_pos = {0.0, 0.0, -1.5};
     this->_ref_yaw = 0.0;
-    // this->_tactile_state = {0,0,0,0,0,0,0,0,0,0,0,0};
+    this->_est_pos = {0.0,0.0,0.0};
 
     //Start counter
     this->_period_counter = 0;
@@ -88,18 +88,6 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
         return;
     }
 
-    // if(t>20 && !this->_taken_off){
-    //     this->takeoff();
-    // }
-
-
-    if (t > 20) {
-    this->_ref_pos.z() = -1.5;
-
-    std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << " z :" << this->_ref_pos.z() << std::endl;
-    }
-
-
     px4_msgs::msg::TrajectorySetpoint msg{};
     msg.position = {this->_ref_pos.x(),
                     this->_ref_pos.y(),
@@ -128,16 +116,29 @@ void BaseReferencePositionPub::_publish_offboard_control_mode()
     _offboard_publisher->publish(msg);
 }
 
+void BaseReferencePositionPub::_vehicle_odometry_callback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg){
+    
+
+    this->_est_pos.x() = msg->position[0];
+    this->_est_pos.y() = msg->position[1];
+    this->_est_pos.z() = msg->position[2];    
+
+}
+
 void BaseReferencePositionPub::_tactile_callback(std_msgs::msg::Int8MultiArray::SharedPtr msg) {
     // Check if the size of the received vector matches the expected size (12 in this case)
     if (msg->data.size() == 12) {
-        // Convert the vector to an int8_t array
-        for (size_t i = 0; i < 12; ++i) {
-            this->_tactile_state[i] = static_cast<int8_t>(msg->data[i]);
+        for (int i = 0; i < 12; ++i) {
+            this->_tactile_state[i] = msg->data[i];
         }
     } else {
+        RCLCPP_INFO(this->get_logger(), "Not recieving valid data" );
         // Handle the case where the vector size is not as expected
         // You might want to log an error or take appropriate action here
+    }
+
+    if (this->_tactile_state[0] == 1){
+        std::cout << "hello" << std::endl;
     }
 }
 

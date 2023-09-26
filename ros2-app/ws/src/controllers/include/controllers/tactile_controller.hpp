@@ -6,6 +6,7 @@
 #include "px4_msgs/msg/vehicle_status.hpp"
 #include "px4_msgs/msg/vehicle_command.hpp"
 #include "px4_msgs/msg/timesync_status.hpp"
+#include "px4_msgs/msg/vehicle_odometry.hpp"
 #include "px4_ros_com/frame_transforms.h"
 #include "std_msgs/msg/int8_multi_array.hpp"
 
@@ -33,6 +34,7 @@ private:
     rclcpp::Subscription<px4_msgs::msg::TimesyncStatus>::SharedPtr _timesync_subscription;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _reference_subscription;
     rclcpp::Subscription<std_msgs::msg::Int8MultiArray>::SharedPtr _tactile_sensor_subscription;
+    rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr _vehicle_odometry_subscription;
     
     rclcpp::Publisher<px4_msgs::msg::TrajectorySetpoint>::SharedPtr _trajectory_publisher;
     rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr _offboard_publisher;
@@ -44,8 +46,9 @@ private:
 
     // Current High Level Reference
     Eigen::Vector3d _ref_pos;
+    Eigen::Vector3d _est_pos;
     float _ref_yaw;
-    int8_t _tactile_state[12];
+    int8_t _tactile_state[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     /* Callback Functions */
     void _timer_callback();
@@ -71,6 +74,10 @@ private:
     void _timesync_callback(const px4_msgs::msg::TimesyncStatus::SharedPtr msg);
 
     void _tactile_callback(const std_msgs::msg::Int8MultiArray::SharedPtr msg);
+
+    void _vehicle_odometry_callback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
+
+    void _vehicle_pose_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 
     uint64_t get_timestamp();
 
