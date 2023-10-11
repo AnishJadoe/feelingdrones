@@ -48,6 +48,20 @@ class UInt8():
         first_byte = self.value
         return (first_byte)
     
+class MyInt8():
+
+    def __init__(self,value):
+        self.UPPER_LIMIT = 128
+        self.LOWER_LIMIT = -127
+
+        if value < self.LOWER_LIMIT or value > self.UPPER_LIMIT:
+            raise InvalidNumberException(f"Integer has to be between {self.LOWER_LIMIT} and {self.UPPER_LIMIT}")
+        self.value = value
+    
+    def float_to_array(self):
+        first_byte = self.value
+        return (first_byte)
+    
 class Int16():
 
     def __init__(self,value : int):
@@ -83,7 +97,7 @@ class Float():
         return (byte1, byte2, byte3, byte4)
 
 class Buffer():
-    def __init__(self, buffer:Tuple[Union[Float,Int16,Int8,UInt8]]) -> None:
+    def __init__(self, buffer:Tuple[Union[Float,Int16,MyInt8,UInt8]]) -> None:
         self.buffer = buffer
     
     def get_data(self):
@@ -127,8 +141,8 @@ class TeensyPackage_out():
     
     def __post_init__(self):
 
-        self.arm_motors = Int8(self.arm_motors)
-        self.arm_servos= Int8(self.arm_servos)
+        self.arm_motors = MyInt8(self.arm_motors)
+        self.arm_servos= MyInt8(self.arm_servos)
         self.motor_1_dshot_cmd = Int16(self.motor_1_dshot_cmd)
         self.motor_2_dshot_cmd = Int16(self.motor_2_dshot_cmd)
         self.motor_3_dshot_cmd = Int16(self.motor_3_dshot_cmd)
@@ -318,7 +332,8 @@ def set_servo_positions(serial_connection: serial.Serial, positions, servos: Lis
 
     return    
 
-MAX_GRIPPER_COMMAND = 6144
+OPEN_GRIPPER_COMMAND = 6144
+CLOSE_GRIPPER_COMMAND = 500
 OPEN = 1
 CLOSED = 0 
 IDLE = -1
@@ -356,8 +371,8 @@ class MotorDriver(Node):
         self.publisher.publish(msg)
         
     def listener_callback(self, msg):
-        if not self.ser.isOpen():
-            self.ser.open()
+        if not self.serial_connection.isOpen():
+            self.serial_connection.open()
         command = msg.data
 
         if command == OPEN and self.gripper_state != OPEN:
@@ -368,14 +383,14 @@ class MotorDriver(Node):
             for i in range(10):
                 self.close_gripper()
 
-        self.ser.close()
+        self.serial_connection.close()
 
         return
 
     def open_gripper(self):
         payload = create_payload_package()
         payload.arm_servos.value = 1 
-        positions = [MAX_GRIPPER_COMMAND,MAX_GRIPPER_COMMAND,MAX_GRIPPER_COMMAND]
+        positions = [OPEN_GRIPPER_COMMAND,OPEN_GRIPPER_COMMAND,OPEN_GRIPPER_COMMAND]
         for idx, position in enumerate(positions):
             servo_id = idx+1
             setattr(payload,f'servo_angle_{servo_id}', Int16(position)) 
@@ -394,10 +409,8 @@ class MotorDriver(Node):
     def close_gripper(self):
         payload = create_payload_package()
         payload.arm_servos.value = 1 
-        positions = [0,0,0]
-        for idx, position in enumerate(positions):
-            servo_id = idx+1
-            setattr(payload,f'servo_angle_{servo_id}', Int16(position)) 
+        positions = [CLOSE_GRIPPER_COMMAND,CLOSE_GRIPPER_COMMAND,CLOSE_GRIPPER_COMMAND]
+        for idx, position in enumerate(positions):docker buildx build --platform linux/arm64 --push -t anishjadoe/raspberrypi_packages .) 
             print(f"Setting position for servo {servo_id} to {position}")
             
         buffer = create_serial_bufer(payload)

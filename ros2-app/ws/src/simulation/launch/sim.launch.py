@@ -16,8 +16,7 @@ def generate_launch_description():
     PX4_RUN_DIR = HOME + '/dev/working/PX4-Autopilot'
 
     os.makedirs(PX4_RUN_DIR, exist_ok=True)
-    
-    # # GZ - ROS Bridge
+    # GZ - ROS Bridge
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -25,22 +24,34 @@ def generate_launch_description():
             # Clock (GZ -> ROS2)
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             # Base Pose Ground Truth (GZ->ROS2)
-            '/world/cyberzoo/model/x500/pose@geometry_msgs/msg/PoseStamped[gz.msgs.Pose',
+            '/world/cyberzoo/model/x500/pose@geometry_msgs/msg/PoseStamped@gz.msgs.Pose',
+            # Pole location
+            '/world/cyberzoo/model/aluminum_bar_1/pose@geometry_msgs/msg/PoseStamped@gz.msgs.Pose',
+        ],
+        remappings=[
+            ('/world/cyberzoo/model/aluminum_bar_1/pose', '/bar/pose'),
         ],
         output='screen'
+    )
+
+    # Visual Odometry Forwarder
+    mocap_forwarder = Node(
+        package='observers',
+        executable='mocap_forwarder'
     )
 
     return LaunchDescription([
         # Set required environment variables
         SetEnvironmentVariable('GZ_SIM_SYSTEM_PLUGIN_PATH',
-                        HOME + '/dev/working/feeling_drones/ros2-app/build/simulation'),
+                        HOME + '/dev/working/feelingdrones/ros2-app/ws/build/simulation/'),
+        SetEnvironmentVariable('GZ_SIM_RESOURCE_PATH',
+                        PX4_RUN_DIR + '/Tools/simulation/gz/models'),
         SetEnvironmentVariable('PX4_GZ_MODEL',
                                'x500'),
         SetEnvironmentVariable('PX4_GZ_WORLD',
                                'cyberzoo'),
         SetEnvironmentVariable('PX4_GZ_MODEL_POSE',
                                '0,0,0.75,0,0,1.5707963267948966'),
-        
         # Launch MicroXRCEAgent to communicate between PX4 and ROS2
         ExecuteProcess(
             cmd=[
@@ -56,4 +67,5 @@ def generate_launch_description():
 
         # # Launch GZ-ROS2 Bridge
         bridge,
+        # mocap_forwarder
     ])

@@ -14,7 +14,7 @@ class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('mpr121_publisher')
-        self.publisher_ = self.create_publisher(Int8MultiArray, 'touch_events', 10)
+        self.publisher_ = self.create_publisher(Int8MultiArray, '/touch_sensor/events', 10)
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         # Create I2C bus.

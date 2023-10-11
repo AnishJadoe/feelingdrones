@@ -11,14 +11,14 @@ class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('mpr121_publisher')
-        self.publisher_ = self.create_publisher(Int8MultiArray, '/tactile_output', 10)
+        self.publisher_ = self.create_publisher(Int8MultiArray, '/touch_sensor/events', 10)
         timer_period = 1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
 
     def timer_callback(self):
         msg = Int8MultiArray()
-        touch_event = [1,0,0,0,0,0,0,0,0,0,0,0]
+        touch_event = [0,0,0,1,0,0,0,0,0,0,0,0]
         msg.data = touch_event
         self.publisher_.publish(msg)
         self.get_logger().info('Publishing: "%s"' % msg.data)

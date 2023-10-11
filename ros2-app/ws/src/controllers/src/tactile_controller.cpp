@@ -3,7 +3,7 @@
 #include <vector>
 
 // Constants
-float EPSILON = 0.001; 
+float EPSILON = 0.003; 
 int8_t OPEN = 1;
 int8_t CLOSED = 0; 
 int8_t UNKNOWN = -1; 
@@ -29,15 +29,16 @@ FeelyDrone::FeelyDrone()
     this->_vehicle_odometry_subscription = this->create_subscription<px4_msgs::msg::VehicleOdometry>(
         "/fmu/out/vehicle_odometry", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_vehicle_odometry_callback, this, std::placeholders::_1));
     this->_tactile_sensor_subscription = this->create_subscription<std_msgs::msg::Int8MultiArray>(
-        "/tactile_output", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_tactile_callback, this, std::placeholders::_1));
+        "/touch_sensor/events", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_tactile_callback, this, std::placeholders::_1));
 
     this->_gripper_state_subscription = this->create_subscription<std_msgs::msg::Int8>(
-        "/gripper/out/gripper_state", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_gripper_callback, this, std::placeholders::_1)
+        "/gripper/out/gripper_state", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_update_gripper_state_callback, this, std::placeholders::_1)
     );
 
     
     this->_gripper_publisher = this->create_publisher<std_msgs::msg::Int8>(
         "/gripper/in/gripper_state", 10);
+        
     this->_offboard_publisher = this->create_publisher<px4_msgs::msg::OffboardControlMode>(
         "/fmu/in/offboard_control_mode", 10);
     this->_trajectory_publisher = this->create_publisher<px4_msgs::msg::TrajectorySetpoint>(
@@ -49,7 +50,7 @@ FeelyDrone::FeelyDrone()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, -1.5};
+    this->_ref_pos = {0.0, 0.0, -1};
     this->_ref_yaw = 0.0;
     this->_est_pos = {0.0,0.0,0.0};
 
@@ -88,14 +89,14 @@ void FeelyDrone::_timer_callback()
     
     if (_offboard_setpoint_counter == 50) 
     {
-        /* On the real system we want to arm and change mode using the remote control
-            Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
-        // Change to Offboard mode after 10 setpoints
-        this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+        // /* On the real system we want to arm and change mode using the remote control
+        //     Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
+        // // Change to Offboard mode after 10 setpoints
+        // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-        // Arm the vehicle
-        this->arm();
-        this->_current_state = States::HOVER;
+        // // Arm the vehicle
+        // this->arm();
+        this->_change_state(States::HOVER);
     }
 
     // offboard_control_mode needs to be paired with trajectory_setpoint
@@ -129,14 +130,18 @@ void FeelyDrone::_hover_event_handler()
 {
     double t = (this->now() - this->_beginning).seconds();
 
-    if (t > 10 && !this->_landed){
+    if (t > 15 && !this->_landed){
         this->_ref_pos.z() = -1.5;
+        std_msgs::msg::Int8 msg{};
+        msg.data = OPEN; 
+        RCLCPP_INFO(this->get_logger(), "SEARCHING" );
+        this->_gripper_publisher->publish(msg);
+
     }
 }
 
 void FeelyDrone::_touch_event_handler()
-{   
-
+{    
     float norm = (_est_pos - _ref_pos).squaredNorm();
     std::cout << "Calculated Norm: " << norm << std::endl; 
     if ( norm < EPSILON)
@@ -145,23 +150,23 @@ void FeelyDrone::_touch_event_handler()
         return;
     }
 
-    if (this->_tactile_state[0] == 1){
-        this->_ref_pos.x() = this->_touch_pos.x() + 1;
-        this->_ref_pos.y() = this->_touch_pos.y() + 1;
+    if (this->_tactile_state[3] == 1){
+        this->_ref_pos.x() = this->_touch_pos.x() + 0.035;
+        this->_ref_pos.y() = this->_touch_pos.y() + 0.13;
         this->_ref_pos.z() = this->_touch_pos.z() + 0.5;
     }
 
 
-    if (this->_tactile_state[3] == 1){
-        this->_ref_pos.x() = this->_touch_pos.x() - 1;
-        this->_ref_pos.y() = this->_touch_pos.y() + 1;
+    if (this->_tactile_state[9] == 1){
+        this->_ref_pos.x() = this->_touch_pos.x() - 0.035;
+        this->_ref_pos.y() = this->_touch_pos.y() + 0.13;
         this->_ref_pos.z() = this->_touch_pos.z() + 0.5;
     }
 
 
     if (this->_tactile_state[6] == 1){
         this->_ref_pos.x() = this->_touch_pos.x();
-        this->_ref_pos.y() = this->_touch_pos.y() - 1;
+        this->_ref_pos.y() = this->_touch_pos.y() - 0.13;
         this->_ref_pos.z() = this->_touch_pos.z() + 0.5;
     }
 
@@ -226,7 +231,8 @@ void FeelyDrone::_vehicle_odometry_callback(const px4_msgs::msg::VehicleOdometry
 
 }
 
-void FeelyDrone::_gripper_callback(const std_msgs::msg::Int8::SharedPtr msg){
+void FeelyDrone::_update_gripper_state_callback(const std_msgs::msg::Int8::SharedPtr msg){
+    // Whenever the gripper state is changed, we update it here for continuity 
     if (msg->data == OPEN){
         this->_gripper_state = OPEN;
     }
@@ -244,10 +250,12 @@ void FeelyDrone::_tactile_callback(const std_msgs::msg::Int8MultiArray::SharedPt
             for (int i = 0; i < 12; ++i) {
                 this->_tactile_state[i] = msg->data[i];
             }
-            this->_touch_pos.x() = _est_pos.x();
-            this->_touch_pos.y() = _est_pos.y();
-            this->_touch_pos.z() = _est_pos.z();
-            this->_change_state(States::TOUCHED);
+            if ( this->_tactile_state[3] == 1 || this->_tactile_state[6] == 1 || this->_tactile_state[9] == 1){
+                this->_touch_pos.x() = _est_pos.x();
+                this->_touch_pos.y() = _est_pos.y();
+                this->_touch_pos.z() = _est_pos.z();
+                this->_change_state(States::TOUCHED);
+            }
         } else {
             RCLCPP_INFO(this->get_logger(), "Not recieving valid data" );
             // Handle the case where the vector size is not as expected

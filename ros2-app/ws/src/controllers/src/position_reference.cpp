@@ -31,7 +31,7 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, -1.0};
+    this->_ref_pos = {0.0, 0.0, -1.5};
     this->_ref_yaw = 0.0;
 
     //Start counter
@@ -44,24 +44,25 @@ BaseReferencePositionPub::BaseReferencePositionPub()
 void BaseReferencePositionPub::_timer_callback()
 {
     
-    // if (_offboard_setpoint_counter == 20) 
-    // {
-    //     /* On the real system we want to arm and change mode using the remote control
-    //         Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
-    //     // Change to Offboard mode after 10 setpoints
-    //     this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+    if (_offboard_setpoint_counter == 50) 
+    {
+        RCLCPP_INFO(this->get_logger(), "Lets go");
+        /* On the real system we want to arm and change mode using the remote control
+            Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
+        // Change to Offboard mode after 10 setpoints
+        // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-    //     // Arm the vehicle
-    //     this->arm();
+        // // Arm the vehicle
+        // this->arm();
 
-    // }
+    }
 
     // offboard_control_mode needs to be paired with trajectory_setpoint
     this->_publish_offboard_control_mode();
     this->_publish_trajectory_setpoint();
 
     // stop the counter after reaching 11
-    if (_offboard_setpoint_counter < 21) {
+    if (_offboard_setpoint_counter < 51) {
         _offboard_setpoint_counter++;
     }
 
@@ -76,42 +77,38 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
     double period = 50;
 
     /* After mission time ran out */
-    if(t > 1000 && !this->_landed)
+    if(_period_counter > 2 && !this->_landed)
     {
         this->_landed = true;
         this->land();
         return;
     }
 
-    // if(t>10 && !this->_taken_off){
-    //     this->takeoff();
-    // }
-
     if (t >= (20 + period * this->_period_counter) && t < (30 + period * this->_period_counter)) {
         this->_ref_pos.x() = 2;
         this->_ref_pos.y() = 0;
-        this->_ref_pos.z() = -1;
+        this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
     if (t >= (30 + period * this->_period_counter) && t < (40 + period * this->_period_counter)) {
         this->_ref_pos.x() = 2;
         this->_ref_pos.y() = 2;
-        this->_ref_pos.z() = -1;
+        this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
     if (t >= (40 + period * this->_period_counter) && t < (50 + period * this->_period_counter)) {
         this->_ref_pos.x() = 0;
         this->_ref_pos.y() = 2;
-        this->_ref_pos.z() = -1;
+        this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
     if (t >= (50 + period * this->_period_counter) && t < (60 + period * this->_period_counter)) {
         this->_ref_pos.x() = 0;
         this->_ref_pos.y() = 0;
-        this->_ref_pos.z() = -1;
+        this->_ref_pos.z() = -1.5;
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
 
