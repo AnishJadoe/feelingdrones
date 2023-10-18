@@ -31,7 +31,7 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, -1.5};
+    this->_ref_pos = {0.0, 0.0, -2};
     this->_ref_yaw = 0.0;
 
     //Start counter
@@ -50,10 +50,10 @@ void BaseReferencePositionPub::_timer_callback()
         /* On the real system we want to arm and change mode using the remote control
             Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
         // Change to Offboard mode after 10 setpoints
-        this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+        // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-        // Arm the vehicle
-        this->arm();
+        // // Arm the vehicle
+        // this->arm();
 
     }
 
@@ -89,8 +89,8 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
     // }
 
 
-    if (t > 20) {
-    this->_ref_pos.z() = -1.5;
+    if (t > 10) {
+    this->_ref_pos.z() = -2;
     this->_ref_pos.y() = 0;
     this->_ref_pos.x() = 0;
 

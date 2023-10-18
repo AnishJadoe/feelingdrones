@@ -332,7 +332,7 @@ def set_servo_positions(serial_connection: serial.Serial, positions, servos: Lis
 
     return    
 
-OPEN_GRIPPER_COMMAND = 6144
+OPEN_GRIPPER_COMMAND = 8500
 CLOSE_GRIPPER_COMMAND = 500
 OPEN = 1
 CLOSED = 0 
@@ -410,8 +410,8 @@ class MotorDriver(Node):
         payload = create_payload_package()
         payload.arm_servos.value = 1 
         positions = [CLOSE_GRIPPER_COMMAND,CLOSE_GRIPPER_COMMAND,CLOSE_GRIPPER_COMMAND]
-        for idx, position in enumerate(positions):docker buildx build --platform linux/arm64 --push -t anishjadoe/raspberrypi_packages .) 
-            print(f"Setting position for servo {servo_id} to {position}")
+        for idx, position in enumerate(positions):
+            print(f"Setting position for servo {idx} to {position}")
             
         buffer = create_serial_bufer(payload)
         payload_out = struct.pack(struct_out, *buffer.get_data(), buffer.get_checksum())

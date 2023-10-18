@@ -1,6 +1,8 @@
+from glob import glob
+import os
 from setuptools import find_packages, setup
 
-package_name = 'data_mocker'
+package_name = 'tf2_broadcasters'
 
 setup(
     name=package_name,
@@ -10,6 +12,8 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'launch'), 
+        glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -20,10 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mpr121_mocker = data_mocker.mpr121_mocker:main',
-            'gripper_mocker = data_mocker.gripper_mocker:main',
-            'gripper_open = data_mocker.open_gripper:main',
-            'gripper_close = data_mocker.close_gripper:main',
+        'tf2_broadcaster = tf2_broadcasters.tf2_broadcaster:main',
         ],
     },
 )
