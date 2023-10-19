@@ -1,4 +1,4 @@
-#include "tactile_controller.hpp"
+#include "open_loop_perch.hpp"
 #include <iostream>
 #include <vector>
 
@@ -109,16 +109,8 @@ void FeelyDrone::_timer_callback()
         this->_hover_event_handler();
     }
 
-    if (this->_current_state == States::SEARCHING){
-        this->_searching_event_handler();
-    }
-
     if (this->_current_state == States::MOVING){
         this->_moving_event_handler();
-    }
-
-    if (this->_current_state == States::TOUCHED){
-        this->_touch_event_handler();
     }
 
     if (this->_current_state == States::GRASP){
@@ -171,52 +163,6 @@ void FeelyDrone::_moving_event_handler(){
     }
 }
 
-void FeelyDrone::_searching_event_handler(){
-    RCLCPP_INFO(this->get_logger(), "SEARCHING" );
-    // TODO -> Write proper transformation for this 
-    this->_ref_pos.x() = this->_obj_pos.x();
-    this->_ref_pos.y() = this->_obj_pos.y();
-    this->_ref_pos.z() = this->_obj_pos.z() + 0.15;
-
-    float norm = (_est_pos - _ref_pos).squaredNorm();
-    if ( norm < EPSILON)
-    {
-        this->_change_state(States::GRASP);
-        return;
-    }
-}
-
-void FeelyDrone::_touch_event_handler()
-{    
-    float norm = (_est_pos - _ref_pos).squaredNorm();
-    std::cout << "Calculated Norm: " << norm << std::endl; 
-    if ( norm < EPSILON)
-    {
-        this->_change_state(States::GRASP);
-        return;
-    }
-
-    if (this->_tactile_state[3] == 1){
-        this->_ref_pos.x() = this->_touch_pos.x() + 0.035;
-        this->_ref_pos.y() = this->_touch_pos.y() + 0.13;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.5;
-    }
-
-
-    if (this->_tactile_state[9] == 1){
-        this->_ref_pos.x() = this->_touch_pos.x() - 0.035;
-        this->_ref_pos.y() = this->_touch_pos.y() + 0.13;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.5;
-    }
-
-
-    if (this->_tactile_state[6] == 1){
-        this->_ref_pos.x() = this->_touch_pos.x();
-        this->_ref_pos.y() = this->_touch_pos.y() - 0.13;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.5;
-    }
-
-}
 
 void FeelyDrone::_grasp_event_handler(){
 
@@ -237,7 +183,6 @@ void FeelyDrone::_grasp_event_handler(){
         }
         return;
     }
-
 
 }
 

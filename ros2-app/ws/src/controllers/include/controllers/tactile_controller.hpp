@@ -29,7 +29,6 @@ private:
     uint8_t _nav_state, _arming_state, _gripper_state;
     bool _taken_off = false, _landed = false;
     uint _offboard_setpoint_counter;
-    int _period_counter;
     double _frequency; 
 
 
@@ -64,6 +63,10 @@ private:
     
     float _ref_yaw;
     int8_t _tactile_state[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int _period_counter = 0;
+    float _t_search;
+    float _x_search;
+    float _y_search;
 
 
 

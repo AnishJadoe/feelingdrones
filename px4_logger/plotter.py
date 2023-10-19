@@ -33,7 +33,7 @@ register_types(add_types)
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/18_10/test_perch_13/'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/19_10/test_searching_4/'
 
 # Topics to collect data from
 topics=['/fmu/in/trajectory_setpoint',
@@ -168,7 +168,7 @@ ax[0][1].legend()
 ax[1][0].plot(t_ref,reference[:,2], label='reference')
 ax[1][0].plot(t_odom,odom[:,2], label='odometry')
 ax[1][0].plot(t_mocap,mocap[:,2], label='mocap')
-# ax[1][0].plot(t_bar,bar[:,2], label='bar')
+ax[1][0].plot(t_bar,-1*bar[:,2], label='bar')
 ax[1][0].set_title('Z')
 ax[1][0].legend()
 

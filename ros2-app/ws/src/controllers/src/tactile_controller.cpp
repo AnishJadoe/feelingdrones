@@ -53,6 +53,7 @@ FeelyDrone::FeelyDrone()
     this->_ref_pos = {0.0, 0.0, -1.0};
     this->_ref_yaw = 0.0;
     this->_est_pos = {0.0,0.0,0.0};
+ 
 
     //Start counter
     this->_period_counter = 0;
@@ -96,9 +97,8 @@ void FeelyDrone::_timer_callback()
         // // Change to Offboard mode after 10 setpoints
         this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
         // // // Arm the vehicle
-        this->arm();
-
-        RCLCPP_INFO(this->get_logger(), "Arm now");
+        // this->arm();
+        // RCLCPP_INFO(this->get_logger(), "Arm now");
         this->_change_state(States::HOVER);
     }
 
@@ -111,10 +111,6 @@ void FeelyDrone::_timer_callback()
 
     if (this->_current_state == States::SEARCHING){
         this->_searching_event_handler();
-    }
-
-    if (this->_current_state == States::MOVING){
-        this->_moving_event_handler();
     }
 
     if (this->_current_state == States::TOUCHED){
@@ -143,7 +139,7 @@ void FeelyDrone::_hover_event_handler()
 
     RCLCPP_INFO(this->get_logger(), "HOVERING" );
 
-    if (t > 5 && !this->_landed && t < 10){
+    if (t > 5 && !this->_landed && this->_gripper_state != OPEN){
         std_msgs::msg::Int8 msg{};
         msg.data = OPEN; 
         this->_gripper_publisher->publish(msg);
@@ -151,39 +147,92 @@ void FeelyDrone::_hover_event_handler()
     }
 
     if (t > 15 && !this->_landed){
-        this->_change_state(States::MOVING);
+        _t_search = t;
+        this->_change_state(States::SEARCHING);
         return;
 
-    }
-}
-void FeelyDrone::_moving_event_handler(){
-    RCLCPP_INFO(this->get_logger(), "MOVING TO OBJECT" );
-    this->_ref_pos.x() = this->_obj_pos.x();
-    this->_ref_pos.y() = this->_obj_pos.y();
-    this->_ref_pos.z() = this->_obj_pos.z() + 0.15;
-    //this->_ref_yaw = M_PI*0.5;
-
-    float norm = (_est_pos - _ref_pos).squaredNorm();
-    if ( norm < EPSILON)
-    {
-        this->_change_state(States::GRASP);
-        return;
     }
 }
 
 void FeelyDrone::_searching_event_handler(){
     RCLCPP_INFO(this->get_logger(), "SEARCHING" );
-    // TODO -> Write proper transformation for this 
-    this->_ref_pos.x() = this->_obj_pos.x();
-    this->_ref_pos.y() = this->_obj_pos.y();
-    this->_ref_pos.z() = this->_obj_pos.z() + 0.15;
+    double t = (this->now() - this->_beginning).seconds();
+    double period = 36;
+    float trajectory_step = 0.2;
+    float height_step = 0.1;
+    // Define bounds for search trajectory 
+    float t_trajectory = t - _t_search;
+    float x_max = this->_obj_pos.x() + 0.3;
+    float x_min = this->_obj_pos.x() - 0.3;
+    float y_max = this->_obj_pos.y() + 0.3;
+    float y_min = this->_obj_pos.y() - 0.3;
 
-    float norm = (_est_pos - _ref_pos).squaredNorm();
-    if ( norm < EPSILON)
-    {
-        this->_change_state(States::GRASP);
-        return;
+    // ROUGH, See if this can be refactored 
+    this->_ref_pos.z() = this->_obj_pos.z() + 0.4 - height_step*_period_counter;
+    if (t_trajectory >= (0 + period * this->_period_counter) && t_trajectory < (3 + period * this->_period_counter)) {
+        this->_ref_pos.x() = x_min;
+        this->_ref_pos.y() = y_min;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
+    if (t_trajectory>= (3 + period * this->_period_counter) && t_trajectory < (6 + period * this->_period_counter)) {
+        this->_ref_pos.x() = x_min + trajectory_step;
+        this->_ref_pos.y() = y_min;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t_trajectory >= (6 + period * this->_period_counter) && t_trajectory < (9+ period * this->_period_counter)) {
+        this->_ref_pos.x() = x_min + trajectory_step;
+        this->_ref_pos.y() = y_max;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+
+    if (t_trajectory >= (9 + period * this->_period_counter) && t_trajectory < (12+ period * this->_period_counter)) {
+        this->_ref_pos.x() = x_min + trajectory_step * 2;
+        this->_ref_pos.y() = y_max;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t_trajectory >= (12 + period * this->_period_counter) && t_trajectory < (15+ period * this->_period_counter)) {
+        this->_ref_pos.x() = x_min + trajectory_step * 2;
+        this->_ref_pos.y() = y_min;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t_trajectory >= (15 + period * this->_period_counter) && t_trajectory < (18 + period * this->_period_counter)) {
+        this->_ref_pos.x() = x_min + trajectory_step * 3;
+        this->_ref_pos.y() = y_min;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+
+        if (t_trajectory >= (18 + period * this->_period_counter) && t_trajectory < (21 + period * this->_period_counter)) {
+        this->_ref_pos.x() = x_max;
+        this->_ref_pos.y() = y_max;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t_trajectory>= (21 + period * this->_period_counter) && t_trajectory < (24 + period * this->_period_counter)) {
+        this->_ref_pos.x() = x_max - trajectory_step;
+        this->_ref_pos.y() = y_max;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t_trajectory >= (24 + period * this->_period_counter) && t_trajectory < (27 + period * this->_period_counter)) {
+        this->_ref_pos.x() = x_max - trajectory_step;
+        this->_ref_pos.y() = y_min;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+
+    if (t_trajectory >= (27 + period * this->_period_counter) && t_trajectory < (30+ period * this->_period_counter)) {
+        this->_ref_pos.x() = x_max - trajectory_step * 2;
+        this->_ref_pos.y() = y_min;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t_trajectory >= (30 + period * this->_period_counter) && t_trajectory < (33 + period * this->_period_counter)) {
+        this->_ref_pos.x() = x_max - trajectory_step * 3;
+        this->_ref_pos.y() = y_min;
+        std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
+    }
+    if (t_trajectory >= (33 + period * this->_period_counter) && t_trajectory < (36+ period * this->_period_counter)) {
+        _period_counter++;
+    }
+
+    return
+
 }
 
 void FeelyDrone::_touch_event_handler()

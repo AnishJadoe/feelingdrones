@@ -32,6 +32,9 @@ ament_target_dependencies(position_hover rclcpp geometry_msgs px4_msgs px4_ros_c
 add_executable(tactile_controller src/tactile_controller.cpp)
 ament_target_dependencies(tactile_controller rclcpp std_msgs geometry_msgs px4_msgs px4_ros_com Eigen3)
 
+add_executable(open_loop_perch src/open_loop_perch.cpp)
+ament_target_dependencies(open_loop_perch rclcpp std_msgs geometry_msgs px4_msgs px4_ros_com Eigen3)
+
 target_include_directories(position_reference PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/controllers>
   $<INSTALL_INTERFACE:include>)
@@ -47,6 +50,12 @@ target_include_directories(tactile_controller PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_compile_features(tactile_controller PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
+target_include_directories(open_loop_perch PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/controllers>
+  $<INSTALL_INTERFACE:include>)
+target_compile_features(open_loop_perch PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
+
 install(TARGETS position_reference
   DESTINATION lib/${PROJECT_NAME})
 
@@ -54,6 +63,9 @@ install(TARGETS position_hover
 DESTINATION lib/${PROJECT_NAME})
 
 install(TARGETS tactile_controller
+DESTINATION lib/${PROJECT_NAME})
+
+install(TARGETS open_loop_perch
 DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
