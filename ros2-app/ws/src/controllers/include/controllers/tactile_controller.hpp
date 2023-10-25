@@ -27,9 +27,10 @@ private:
     States _current_state;
 
     uint8_t _nav_state, _arming_state, _gripper_state;
-    bool _taken_off = false, _landed = false;
+    bool _taken_off = false, _landed = false, _position_set = false;
     uint _offboard_setpoint_counter;
     double _frequency; 
+    
 
 
 

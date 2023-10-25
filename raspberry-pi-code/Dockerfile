@@ -30,6 +30,7 @@ ADD ws/ ./ws/
 WORKDIR /home/user/ros/FeelingDroneRPi/ws
 
 # Setup workspace
+RUN . /opt/ros/${ROS_DISTRO}/setup.sh && colcon build --packages-select px4_msgs
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && colcon build --packages-select mpr121_pubsub
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && colcon build --packages-select sts3032_motor_driver
 

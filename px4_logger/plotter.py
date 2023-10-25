@@ -33,14 +33,15 @@ register_types(add_types)
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/19_10/test_searching_4/'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/24_10/test_perch_4/'
 
 # Topics to collect data from
 topics=['/fmu/in/trajectory_setpoint',
         '/fmu/out/vehicle_odometry',
         '/fmu/in/vehicle_visual_odometry',
         '/fmu/in/vehicle_command',
-        '/bar/pose']
+        '/bar/pose',
+        '/touch_sensor/raw_data']
 
 ##############################################################
 ############## Load all the data #############################
@@ -68,6 +69,10 @@ with Reader(path) as reader:
 
     t_command = []
     command = []
+
+    t_sensors = []
+    tactile_sensors = [[],[],[],[],[],[],[],[],[],[],[],[]] 
+
 
     # topic and msgtype information is available on .connections list
     for connection in reader.connections:
@@ -102,9 +107,20 @@ with Reader(path) as reader:
             t_bar += [timestamp]
             bar += [msg.pose.position]
             bar_q += [msg.pose.orientation]
+        if connection.topic == topics[5]:
+            msg = deserialize_cdr(rawdata, connection.msgtype)
+            t_sensors += [timestamp]
+            for idx,data in enumerate(msg.data):
+                tactile_sensors[idx].append(data)
 
 
 
+
+for i in range(len(tactile_sensors)):
+    if sum(tactile_sensors[i]) > 0:
+        plt.plot(t_sensors,tactile_sensors[i],label=f'sensor_{i}')
+plt.legend()
+plt.show()
 
 # Make all the arrays np arrays
 t_ref = np.array(t_ref, dtype=float) 
