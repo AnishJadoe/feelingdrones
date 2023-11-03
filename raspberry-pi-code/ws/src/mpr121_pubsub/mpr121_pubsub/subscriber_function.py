@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-from std_msgs.msg import Int8MultiArray
+from custom_msgs.msg import StampedInt8MultiArray
 
 
 class MinimalSubscriber(Node):
@@ -9,7 +9,7 @@ class MinimalSubscriber(Node):
     def __init__(self):
         super().__init__('mpr121_sub')
         self.subscription = self.create_subscription(
-            Int8MultiArray,
+            StampedInt8MultiArray,
             '/touch_events',
             self.listener_callback,
             10)

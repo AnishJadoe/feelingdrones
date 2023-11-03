@@ -31,7 +31,7 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, -2};
+    this->_ref_pos = {0.0, 0.0, -1};
     this->_ref_yaw = 0.0;
 
     //Start counter
@@ -90,7 +90,7 @@ void BaseReferencePositionPub::_publish_trajectory_setpoint()
 
 
     if (t > 10) {
-    this->_ref_pos.z() = -2;
+    this->_ref_pos.z() = -1;
     this->_ref_pos.y() = 0;
     this->_ref_pos.x() = 0;
 

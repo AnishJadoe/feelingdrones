@@ -31,7 +31,7 @@ BaseReferencePositionPub::BaseReferencePositionPub()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, -1.5};
+    this->_ref_pos = {0.0, 0.0, 0.0};
     this->_ref_yaw = 0.0;
 
     //Start counter
@@ -57,9 +57,11 @@ void BaseReferencePositionPub::_timer_callback()
 
     }
 
-    // offboard_control_mode needs to be paired with trajectory_setpoint
-    this->_publish_offboard_control_mode();
-    this->_publish_trajectory_setpoint();
+    if(!this->_landed){
+        // offboard_control_mode needs to be paired with trajectory_setpoint
+        this->_publish_offboard_control_mode();
+        this->_publish_trajectory_setpoint();
+    }
 
     // stop the counter after reaching 11
     if (_offboard_setpoint_counter < 51) {
@@ -74,45 +76,52 @@ void BaseReferencePositionPub::_timer_callback()
 void BaseReferencePositionPub::_publish_trajectory_setpoint()
 {
     double t = (this->now() - this->_beginning).seconds();
-    double period = 50;
+    double period = 20;
 
     /* After mission time ran out */
-    if(_period_counter > 2 && !this->_landed)
+    if(t >= 60 && !this->_landed)
     {
         this->_landed = true;
         this->land();
         return;
     }
 
-    if (t >= (20 + period * this->_period_counter) && t < (30 + period * this->_period_counter)) {
+    if (t >= 6 && t < 10){
+        this->_ref_pos.x() = 0;
+        this->_ref_pos.y() = 0;
+        this->_ref_pos.z() = -1.5;
+        std::cout << " HOVERING " << std::endl;
+    }
+
+    if (t >= (10 + period * this->_period_counter) && t < (15 + period * this->_period_counter)) {
         this->_ref_pos.x() = 1.5;
         this->_ref_pos.y() = 0;
         this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
-    if (t >= (30 + period * this->_period_counter) && t < (40 + period * this->_period_counter)) {
+    if (t >= (15 + period * this->_period_counter) && t < (20 + period * this->_period_counter)) {
         this->_ref_pos.x() = 1.5;
         this->_ref_pos.y() = 1.5;
         this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
-    if (t >= (40 + period * this->_period_counter) && t < (50 + period * this->_period_counter)) {
+    if (t >= (20 + period * this->_period_counter) && t < (25 + period * this->_period_counter)) {
         this->_ref_pos.x() = 0;
         this->_ref_pos.y() = 1.5;
         this->_ref_pos.z() = -1.5;
 
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
-    if (t >= (50 + period * this->_period_counter) && t < (60 + period * this->_period_counter)) {
+    if (t >= (25 + period * this->_period_counter) && t < (30 + period * this->_period_counter)) {
         this->_ref_pos.x() = 0;
         this->_ref_pos.y() = 0;
         this->_ref_pos.z() = -1.5;
         std::cout << "Sending setpoint " << "x: " << this->_ref_pos.x() << " y :" << this->_ref_pos.y() << std::endl;
     }
 
-    if (t >= 70 + period * this->_period_counter){
+    if (t >= 30 + period * this->_period_counter){
         this->_period_counter++;
         std::cout << "Incrementing counter to: " << _period_counter << std::endl;
     }

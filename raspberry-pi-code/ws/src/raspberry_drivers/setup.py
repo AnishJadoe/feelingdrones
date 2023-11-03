@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'data_mocker'
+package_name = 'raspberry_drivers'
 
 setup(
     name=package_name,
@@ -20,11 +20,6 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mpr121_mocker = data_mocker.mpr121_mocker:main',
-            'gripper_mocker = data_mocker.gripper_mocker:main',
-            'gripper_open = data_mocker.open_gripper:main',
-            'gripper_close = data_mocker.close_gripper:main',
-            'demo_open_close = data_mocker.gripper_open_close:main'
         ],
     },
 )

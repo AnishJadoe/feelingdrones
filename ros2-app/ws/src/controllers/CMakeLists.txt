@@ -15,6 +15,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(px4_ros_com REQUIRED)
 find_package(px4_msgs REQUIRED)
+find_package(custom_msgs REQUIRED)
 
 # Needed to find the .so file of px4_ros_com package
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -24,16 +25,16 @@ include_directories(
   $<BUILD_INTERFACE:${EIGEN3_INCLUDE_DIR}>)
   
 add_executable(position_reference src/position_reference.cpp)
-ament_target_dependencies(position_reference rclcpp geometry_msgs px4_msgs px4_ros_com Eigen3)
+ament_target_dependencies(position_reference rclcpp geometry_msgs px4_msgs  px4_ros_com Eigen3)
 
 add_executable(position_hover src/position_hover.cpp)
-ament_target_dependencies(position_hover rclcpp geometry_msgs px4_msgs px4_ros_com Eigen3)
+ament_target_dependencies(position_hover rclcpp geometry_msgs px4_msgs  px4_ros_com Eigen3)
 
 add_executable(tactile_controller src/tactile_controller.cpp)
-ament_target_dependencies(tactile_controller rclcpp std_msgs geometry_msgs px4_msgs px4_ros_com Eigen3)
+ament_target_dependencies(tactile_controller rclcpp std_msgs geometry_msgs px4_msgs custom_msgs px4_ros_com Eigen3)
 
 add_executable(open_loop_perch src/open_loop_perch.cpp)
-ament_target_dependencies(open_loop_perch rclcpp std_msgs geometry_msgs px4_msgs px4_ros_com Eigen3)
+ament_target_dependencies(open_loop_perch rclcpp std_msgs geometry_msgs px4_msgs  px4_ros_com Eigen3)
 
 target_include_directories(position_reference PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/controllers>

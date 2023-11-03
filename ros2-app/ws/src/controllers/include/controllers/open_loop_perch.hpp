@@ -42,7 +42,6 @@ private:
     rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr _status_subscription;
     rclcpp::Subscription<px4_msgs::msg::TimesyncStatus>::SharedPtr _timesync_subscription;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _reference_subscription;
-    rclcpp::Subscription<std_msgs::msg::Int8MultiArray>::SharedPtr _tactile_sensor_subscription;
     rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr _vehicle_odometry_subscription;
     rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr _gripper_state_subscription;
 
@@ -63,7 +62,6 @@ private:
     Eigen::Vector3d _obj_pos; // Location of object
     
     float _ref_yaw;
-    int8_t _tactile_state[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 
 
@@ -89,7 +87,6 @@ private:
     void _change_state(States new_state);
     
     /*State Machine hadlers*/
-    void _tactile_controller();
     void _hover_event_handler();
     void _searching_event_handler();
     void _moving_event_handler();
@@ -104,8 +101,6 @@ private:
     void _reference_callback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
 
     void _timesync_callback(const px4_msgs::msg::TimesyncStatus::SharedPtr msg);
-
-    void _tactile_callback(const std_msgs::msg::Int8MultiArray::SharedPtr msg);
 
     void _vehicle_odometry_callback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
 

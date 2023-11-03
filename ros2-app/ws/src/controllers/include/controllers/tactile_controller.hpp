@@ -8,8 +8,8 @@
 #include "px4_msgs/msg/timesync_status.hpp"
 #include "px4_msgs/msg/vehicle_odometry.hpp"
 #include "px4_ros_com/frame_transforms.h"
-#include "std_msgs/msg/int8_multi_array.hpp"
 #include "std_msgs/msg/int8.hpp"
+#include "custom_msgs/msg/stamped_int32_multi_array.hpp"
 #include <string>
 
 using namespace std::chrono_literals;
@@ -33,7 +33,6 @@ private:
     
 
 
-
     std::string stateToString(States state) const ;
     rclcpp::Time _beginning;
     rclcpp::TimerBase::SharedPtr _timer;
@@ -42,8 +41,8 @@ private:
     rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr _status_subscription;
     rclcpp::Subscription<px4_msgs::msg::TimesyncStatus>::SharedPtr _timesync_subscription;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr _reference_subscription;
-    rclcpp::Subscription<std_msgs::msg::Int8MultiArray>::SharedPtr _tactile_sensor_subscription;
     rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr _vehicle_odometry_subscription;
+    rclcpp::Subscription<custom_msgs::msg::StampedInt32MultiArray>::SharedPtr _tactile_sensor_subscription;
     rclcpp::Subscription<std_msgs::msg::Int8>::SharedPtr _gripper_state_subscription;
 
 
@@ -109,7 +108,7 @@ private:
 
     void _timesync_callback(const px4_msgs::msg::TimesyncStatus::SharedPtr msg);
 
-    void _tactile_callback(const std_msgs::msg::Int8MultiArray::SharedPtr msg);
+    void _tactile_callback(const custom_msgs::msg::StampedInt32MultiArray::SharedPtr msg);
 
     void _vehicle_odometry_callback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
 

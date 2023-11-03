@@ -28,7 +28,7 @@ FeelyDrone::FeelyDrone()
         "/bar/pose", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_reference_callback, this, std::placeholders::_1));
     this->_vehicle_odometry_subscription = this->create_subscription<px4_msgs::msg::VehicleOdometry>(
         "/fmu/out/vehicle_odometry", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_vehicle_odometry_callback, this, std::placeholders::_1));
-    this->_tactile_sensor_subscription = this->create_subscription<std_msgs::msg::Int8MultiArray>(
+    this->_tactile_sensor_subscription = this->create_subscription<custom_msgs::msg::StampedInt32MultiArray>(
         "/touch_sensor/events", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_tactile_callback, this, std::placeholders::_1));
 
     this->_gripper_state_subscription = this->create_subscription<std_msgs::msg::Int8>(
@@ -50,7 +50,7 @@ FeelyDrone::FeelyDrone()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, -1.0};
+    this->_ref_pos = {0.0, 0.0, 0.0};
     this->_ref_yaw = 0.0;
     this->_est_pos = {0.0,0.0,0.0};
  
@@ -137,9 +137,15 @@ void FeelyDrone::_hover_event_handler()
 {
     double t = (this->now() - this->_beginning).seconds();
 
-    RCLCPP_INFO(this->get_logger(), "HOVERING" );
+    if (t > 5 && !this->_landed){
+        RCLCPP_INFO(this->get_logger(), "GOING UP" );
 
-    if (t > 5 && !this->_landed && this->_gripper_state != OPEN){
+        this->_ref_pos.x() = 0;
+        this->_ref_pos.y() = 0;
+        this->_ref_pos.z() = -0.8;
+
+    }
+    if (t > 7 && !this->_landed && this->_gripper_state != OPEN){
         std_msgs::msg::Int8 msg{};
         msg.data = OPEN; 
         this->_gripper_publisher->publish(msg);
@@ -152,20 +158,20 @@ void FeelyDrone::_hover_event_handler()
         return;
 
     }
+    return;
 }
 
 void FeelyDrone::_searching_event_handler(){
-    RCLCPP_INFO(this->get_logger(), "SEARCHING" );
     double t = (this->now() - this->_beginning).seconds();
     double period = 36;
-    float trajectory_step = 0.2;
+    float trajectory_step = 0.1;
     float height_step = 0.1;
     // Define bounds for search trajectory 
     float t_trajectory = t - _t_search;
-    float x_max = this->_obj_pos.x() + 0.15;
-    float x_min = this->_obj_pos.x() - 0.15;
-    float y_max = this->_obj_pos.y() + 0.25;
-    float y_min = this->_obj_pos.y() - 0.25;
+    float x_max = this->_obj_pos.x() + 0.05;
+    float x_min = this->_obj_pos.x() - 0.05;
+    float y_max = this->_obj_pos.y() + 0.20;
+    float y_min = this->_obj_pos.y() - 0.20;
 
     // ROUGH, See if this can be refactored 
     this->_ref_pos.z() = this->_obj_pos.z() + 0.2 - height_step*_period_counter;
@@ -243,7 +249,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[2] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x() + 0.035;
         this->_ref_pos.y() = this->_touch_pos.y() + 0.09;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -251,7 +257,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[5] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x() - 0.035;
         this->_ref_pos.y() = this->_touch_pos.y() + 0.09;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -259,7 +265,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[8] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x();
         this->_ref_pos.y() = this->_touch_pos.y() - 0.09;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -268,7 +274,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[1] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x() + 0.035;
         this->_ref_pos.y() = this->_touch_pos.y() + 0.05;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -276,7 +282,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[4] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x() - 0.035;
         this->_ref_pos.y() = this->_touch_pos.y() + 0.05;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -284,7 +290,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[7] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x();
         this->_ref_pos.y() = this->_touch_pos.y() - 0.05;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -293,7 +299,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[0] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x() + 0.035;
         this->_ref_pos.y() = this->_touch_pos.y() + 0.02;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -301,7 +307,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[3] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x() - 0.035;
         this->_ref_pos.y() = this->_touch_pos.y() + 0.02;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -309,7 +315,7 @@ void FeelyDrone::_touch_event_handler()
     if (this->_tactile_state[6] == 1 && this->_position_set != true){
         this->_ref_pos.x() = this->_touch_pos.x();
         this->_ref_pos.y() = this->_touch_pos.y() - 0.02;
-        this->_ref_pos.z() = this->_touch_pos.z() + 0.2;
+        this->_ref_pos.z() = this->_touch_pos.z() + 0.1;
         this->_position_set = true;
     }
 
@@ -326,10 +332,8 @@ void FeelyDrone::_touch_event_handler()
 
 void FeelyDrone::_grasp_event_handler(){
 
-    this->_ref_pos.x() = this->_obj_pos.x();
-    this->_ref_pos.y() = this->_obj_pos.y();
-    this->_ref_pos.z() = this->_obj_pos.z() + 0.05;
     RCLCPP_INFO(this->get_logger(), "ALIGNING" );
+    this->_ref_pos.z() = this->_touch_pos.z() - 0.05;
     float norm = (_est_pos - _ref_pos).squaredNorm();
     if ( norm < EPSILON)
     {
@@ -414,7 +418,7 @@ void FeelyDrone::_update_gripper_state_callback(const std_msgs::msg::Int8::Share
     }
 }           
 
-void FeelyDrone::_tactile_callback(const std_msgs::msg::Int8MultiArray::SharedPtr msg) {
+void FeelyDrone::_tactile_callback(const custom_msgs::msg::StampedInt32MultiArray::SharedPtr msg) {
     if (this->_current_state == States::MOVING || this->_current_state == States::HOVER || this->_current_state == States::SEARCHING){
         // Check if the size of the received vector matches the expected size (12 in this case)
         if (msg->data.size() == 12) {

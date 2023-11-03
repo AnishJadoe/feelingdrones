@@ -28,8 +28,6 @@ FeelyDrone::FeelyDrone()
         "/bar/pose", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_reference_callback, this, std::placeholders::_1));
     this->_vehicle_odometry_subscription = this->create_subscription<px4_msgs::msg::VehicleOdometry>(
         "/fmu/out/vehicle_odometry", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_vehicle_odometry_callback, this, std::placeholders::_1));
-    this->_tactile_sensor_subscription = this->create_subscription<std_msgs::msg::Int8MultiArray>(
-        "/touch_sensor/events", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_tactile_callback, this, std::placeholders::_1));
 
     this->_gripper_state_subscription = this->create_subscription<std_msgs::msg::Int8>(
         "/gripper/out/gripper_state", rclcpp::SensorDataQoS(), std::bind(&FeelyDrone::_update_gripper_state_callback, this, std::placeholders::_1)
@@ -243,33 +241,6 @@ void FeelyDrone::_update_gripper_state_callback(const std_msgs::msg::Int8::Share
     }
     else{
         this->_gripper_state = UNKNOWN;
-    }
-}
-void FeelyDrone::_tactile_callback(const std_msgs::msg::Int8MultiArray::SharedPtr msg) {
-    if (this->_current_state == States::MOVING || this->_current_state == States::HOVER || this->_current_state == States::SEARCHING){
-        // Check if the size of the received vector matches the expected size (12 in this case)
-        if (msg->data.size() == 12) {
-            for (int i = 0; i < 12; ++i) {
-                this->_tactile_state[i] = msg->data[i];
-            }
-            if ( this->_tactile_state[3] == 1 || this->_tactile_state[6] == 1 || this->_tactile_state[9] == 1){
-                this->_touch_pos.x() = _est_pos.x();
-                this->_touch_pos.y() = _est_pos.y();
-                this->_touch_pos.z() = _est_pos.z();
-                this->_change_state(States::TOUCHED);
-            }
-        } else {
-            RCLCPP_INFO(this->get_logger(), "Not recieving valid data" );
-            // Handle the case where the vector size is not as expected
-            // You might want to log an error or take appropriate action here
-        }   
-    }
-    if (this->_current_state == States::EVALUATE){
-        if (msg->data.size() == 12) {
-            for (int i = 0; i < 12; ++i) {
-                this->_tactile_state[i] = msg->data[i];
-            }
-    }
     }
 }
 

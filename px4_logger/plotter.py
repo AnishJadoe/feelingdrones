@@ -24,6 +24,7 @@ for pathstr in [
     '/home/anish/dev/working/feelingdrones/ros2-app/ws/src/px4_msgs/msg/VehicleOdometry.msg',
     '/home/anish/dev/working/feelingdrones/ros2-app/ws/src/px4_msgs/msg/TrajectorySetpoint.msg',
     '/home/anish/dev/working/feelingdrones/ros2-app/ws/src/px4_msgs/msg/VehicleCommand.msg',
+    '/home/anish/dev/working/feelingdrones/ros2-app/ws/src/custom_msgs/msg/StampedInt32MultiArray.msg'
 ]:
     msgpath = Path(pathstr)
     msgdef = msgpath.read_text(encoding='utf-8')
@@ -33,7 +34,7 @@ register_types(add_types)
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/24_10/test_perch_4/'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/3_11/test_tactile_7/'
 
 # Topics to collect data from
 topics=['/fmu/in/trajectory_setpoint',
@@ -41,7 +42,7 @@ topics=['/fmu/in/trajectory_setpoint',
         '/fmu/in/vehicle_visual_odometry',
         '/fmu/in/vehicle_command',
         '/bar/pose',
-        '/touch_sensor/raw_data']
+        '/touch_sensor/events']
 
 ##############################################################
 ############## Load all the data #############################
@@ -116,11 +117,7 @@ with Reader(path) as reader:
 
 
 
-for i in range(len(tactile_sensors)):
-    if sum(tactile_sensors[i]) > 0:
-        plt.plot(t_sensors,tactile_sensors[i],label=f'sensor_{i}')
-plt.legend()
-plt.show()
+
 
 # Make all the arrays np arrays
 t_ref = np.array(t_ref, dtype=float) 
@@ -150,22 +147,27 @@ base_yaw = np.arctan2(
     ) - np.pi/2
 
 
-mocap_q0 = mocap_q[:,0]
-mocap_q1 = mocap_q[:,1]
-mocap_q2 = mocap_q[:,2]
-mocap_q3 = mocap_q[:,3]
-mocap_yaw = np.arctan2(
-        2 * ((mocap_q1 * mocap_q2) + (mocap_q0 * mocap_q3)),
-        mocap_q0**2 + mocap_q1**2 - mocap_q2**2 - mocap_q3**2
-    ) - np.pi/2
+# mocap_q0 = mocap_q[:,0]
+# mocap_q1 = mocap_q[:,1]
+# mocap_q2 = mocap_q[:,2]
+# mocap_q3 = mocap_q[:,3]
+# mocap_yaw = np.arctan2(
+#         2 * ((mocap_q1 * mocap_q2) + (mocap_q0 * mocap_q3)),
+#         mocap_q0**2 + mocap_q1**2 - mocap_q2**2 - mocap_q3**2
+#     ) - np.pi/2
 
 # Normalize time 
-start_t = min(np.concatenate((t_ref, t_odom, t_mocap, t_bar)))
+start_t = min(np.concatenate((t_ref, t_odom, t_mocap, t_bar, t_sensors)))
 t_ref = (t_ref - start_t) * 1e-9
 t_odom = (t_odom - start_t) * 1e-9
 t_mocap = (t_mocap - start_t) * 1e-9
 t_bar = (t_bar - start_t) * 1e-9
+t_sensors = (t_sensors - start_t) * 1e-9
 
+
+
+
+plt.show()
 fig,ax = plt.subplots(2,2)
 ax[0][0].plot(t_ref,reference[:,0], label='reference')
 ax[0][0].plot(t_odom,odom[:,0], label='odometry')
@@ -184,17 +186,18 @@ ax[0][1].legend()
 ax[1][0].plot(t_ref,reference[:,2], label='reference')
 ax[1][0].plot(t_odom,odom[:,2], label='odometry')
 ax[1][0].plot(t_mocap,mocap[:,2], label='mocap')
-ax[1][0].plot(t_bar,-1*bar[:,2], label='bar')
+# ax[1][0].plot(t_bar,-1*bar[:,2], label='bar')
 ax[1][0].set_title('Z')
 ax[1][0].legend()
-
-ax[1][1].plot(t_ref,reference_yaw, label='reference')
-ax[1][1].plot(t_odom,np.rad2deg(base_yaw), label='odometry')
-ax[1][1].plot(t_mocap,np.rad2deg(mocap_yaw), label='mocap')
-ax[1][1].set_title('Yaw')
-ax[1][1].legend()
-
-
-
-
+for i in range(len(tactile_sensors)):
+        ax[1][0].plot(t_sensors,tactile_sensors[i],label=f'sensor_{i}')
 plt.show()
+
+# ax[1][1].plot(t_ref,reference_yaw, label='reference')
+# ax[1][1].plot(t_odom,np.rad2deg(base_yaw), label='odometry')
+# ax[1][1].plot(t_mocap,np.rad2deg(mocap_yaw), label='mocap')
+# ax[1][1].set_title('Yaw')
+# ax[1][1].legend()
+
+
+

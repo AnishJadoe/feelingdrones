@@ -332,8 +332,7 @@ def set_servo_positions(serial_connection: serial.Serial, positions, servos: Lis
 
     return    
 
-OPEN_GRIPPER_COMMAND = 8500
-CLOSE_GRIPPER_COMMAND = 500
+
 OPEN = 1
 CLOSED = 0 
 IDLE = -1
@@ -342,11 +341,20 @@ SETPOINT_COUNTER = 10
 class MotorDriver(Node):
 
     def __init__(self, serial_connection):
-        print("Init Node")
-        super().__init__('motor_driver')
+        print("INIT SERVO DRIVER")
+        super().__init__('servo_driver')
 
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
+
+        self.declare_parameter('open_servo_position', 7500)
+        self.declare_parameter('close_servo_position', 500)
+
+        self._open_gripper_command = self.get_parameter('open_servo_position').get_parameter_value().integer_value
+        self._close_gripper_command = self.get_parameter('close_servo_position').get_parameter_value().integer_value
+
+        print(f'Using open gripper command {self._open_gripper_command}')
+        print(f'Using close gripper command {self._close_gripper_command}')
 
         self.subscription = self.create_subscription(
             Int8,
@@ -390,7 +398,7 @@ class MotorDriver(Node):
     def open_gripper(self):
         payload = create_payload_package()
         payload.arm_servos.value = 1 
-        positions = [OPEN_GRIPPER_COMMAND,OPEN_GRIPPER_COMMAND,OPEN_GRIPPER_COMMAND]
+        positions = [self._open_gripper_command,self._open_gripper_command,self._open_gripper_command]
         for idx, position in enumerate(positions):
             servo_id = idx+1
             setattr(payload,f'servo_angle_{servo_id}', Int16(position)) 
@@ -409,7 +417,7 @@ class MotorDriver(Node):
     def close_gripper(self):
         payload = create_payload_package()
         payload.arm_servos.value = 1 
-        positions = [CLOSE_GRIPPER_COMMAND,CLOSE_GRIPPER_COMMAND,CLOSE_GRIPPER_COMMAND]
+        positions = [self._close_gripper_command,self._close_gripper_command,self._close_gripper_command]
         for idx, position in enumerate(positions):
             print(f"Setting position for servo {idx} to {position}")
             
