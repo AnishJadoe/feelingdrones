@@ -11,14 +11,14 @@ from custom_msgs.msg import StampedInt32MultiArray
 from custom_msgs.msg import StampedInt8MultiArray
 
 
-
+MINIMUM_CAPACITANCE_DIFFERENCE = -5
 NUMBER_OF_TOUCH_PADS = 12
 class MinimalPublisher(Node):
 
     def __init__(self):
         super().__init__('mpr121_publisher')
         print("INIT TACTILE SENSOR NODE")
-        self._touch_publiser = self.create_publisher(StampedInt32MultiArray, '/touch_sensor/events',qos.QoSPresetProfiles.SENSOR_DATA.value)
+        # self._touch_publiser = self.create_publisher(StampedInt32MultiArray, '/touch_sensor/events',qos.QoSPresetProfiles.SENSOR_DATA.value)
         self._raw_data_publisher = self.create_publisher(StampedInt32MultiArray, '/touch_sensor/raw_data', qos.QoSPresetProfiles.SENSOR_DATA.value)
         self._filtered_data_publisher = self.create_publisher(StampedInt32MultiArray, '/touch_sensor/filtered_data', qos.QoSPresetProfiles.SENSOR_DATA.value)
         self._baseline_data_publisher = self.create_publisher(StampedInt32MultiArray, '/touch_sensor/baseline_data', qos.QoSPresetProfiles.SENSOR_DATA.value)
@@ -33,6 +33,7 @@ class MinimalPublisher(Node):
         self.sensor_channels = [adafruit_mpr121.MPR121_Channel(self.mpr121, i) for i in range(NUMBER_OF_TOUCH_PADS)]
         self._local_time = time.monotonic_ns()
         self._remote_time = time.monotonic_ns()
+        self._init_state = self.check_for_raw_data()
 
     def _time_sync_callback(self, msg):
         self._local_time = time.monotonic_ns()
@@ -45,11 +46,11 @@ class MinimalPublisher(Node):
     
     def timer_callback(self):
 
-        touch_event = self.check_for_touch_event()
-        touch_msg = StampedInt32MultiArray()
-        touch_msg.data = touch_event
-        touch_msg.timestamp = self._get_timestamp()
-        self._touch_publiser.publish(touch_msg)
+        # touch_event = self.check_for_touch_event()
+        # touch_msg = StampedInt32MultiArray()
+        # touch_msg.data = touch_event
+        # touch_msg.timestamp = self._get_timestamp()
+        # self._touch_publiser.publish(touch_msg)
         
         raw_data = self.check_for_raw_data()
         raw_data_msg = StampedInt32MultiArray()
@@ -69,14 +70,16 @@ class MinimalPublisher(Node):
         filtered_data_msg.timestamp = self._get_timestamp()
         self._filtered_data_publisher.publish(filtered_data_msg)
 
-    def check_for_touch_event(self):
-        raw_data = [self.sensor_channels[i].raw_value for i in range(NUMBER_OF_TOUCH_PADS)]
-        for i in range(len(raw_data)):
-            if raw_data[i] <= 200:
-                raw_data[i] = 1
-            else:
-                raw_data[i] = 0
-        return raw_data
+    # def check_for_touch_event(self):
+    #     touch_events = [0] * NUMBER_OF_TOUCH_PADS
+    #     current_tactile_state = [self.sensor_channels[i].raw_value for i in range(NUMBER_OF_TOUCH_PADS)]
+    #     cap_difference = [self._init_state[i] - current_tactile_state[i] for i in range(NUMBER_OF_TOUCH_PADS)]
+    #     for i in range(len(cap_difference)):
+    #         if cap_difference[i] <= MINIMUM_CAPACITANCE_DIFFERENCE:
+    #             touch_events[i] = 1
+    #         else:
+    #             touch_events[i] = 0
+    #     return touch_events
     
     def check_for_baseline_data(self):
         return [self.mpr121.baseline_data(i) for i in range(NUMBER_OF_TOUCH_PADS)]

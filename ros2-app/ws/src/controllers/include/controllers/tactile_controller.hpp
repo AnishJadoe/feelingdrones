@@ -10,6 +10,7 @@
 #include "px4_ros_com/frame_transforms.h"
 #include "std_msgs/msg/int8.hpp"
 #include "custom_msgs/msg/stamped_int32_multi_array.hpp"
+#include "custom_msgs/msg/stamped_int8.hpp"
 #include <string>
 
 using namespace std::chrono_literals;
@@ -27,7 +28,7 @@ private:
     States _current_state;
 
     uint8_t _nav_state, _arming_state, _gripper_state;
-    bool _taken_off = false, _landed = false, _position_set = false;
+    bool _taken_off = false, _landed = false, _position_set = false, _calibrate_sensors=true;
     uint _offboard_setpoint_counter;
     double _frequency; 
     
@@ -50,6 +51,8 @@ private:
     rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr _offboard_publisher;
     rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr _vehicle_command_pub;
     rclcpp::Publisher<std_msgs::msg::Int8>::SharedPtr _gripper_publisher;
+    rclcpp::Publisher<custom_msgs::msg::StampedInt8>::SharedPtr _drone_state_publisher;
+    rclcpp::Publisher<custom_msgs::msg::StampedInt32MultiArray>::SharedPtr _touched_state_publisher;
 
     // Time offset
     std::atomic<uint64_t> _timestamp_remote;
@@ -57,14 +60,19 @@ private:
 
     // Current High Level Reference
     Eigen::Vector3d _ref_pos;
+    Eigen::Vector3d _goal_pos;
     Eigen::Vector3d _est_pos;
     Eigen::Vector3d _touch_pos; // Location of touch event
     Eigen::Vector3d _obj_pos; // Location of object
     
     float _ref_yaw;
-    int8_t _tactile_state[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int8_t _tactile_state[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+    int8_t _touched_state[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+    int32_t _init_raw_tactile_data[12];
+    int32_t _current_raw_tactile_data[12];
     int _period_counter = 0;
     float _t_search;
+    float _t_touch;
     float _x_search;
     float _y_search;
 
@@ -93,13 +101,21 @@ private:
     
     /*State Machine hadlers*/
     void _tactile_controller();
+    
     void _hover_event_handler();
     void _searching_event_handler();
     void _moving_event_handler();
     void _touch_event_handler();
     void _grasp_event_handler();
     void _evaluate_event_handler();
-    
+
+
+
+    void _publish_drone_state();
+    void _publish_tactile_state();
+    void _move_drone();
+
+    Eigen::Vector3d _setpoint_generator(float t_trajectory);
     void _update_gripper_state_callback(const std_msgs::msg::Int8::SharedPtr msg);
 
     void _status_callback(const px4_msgs::msg::VehicleStatus::SharedPtr msg);

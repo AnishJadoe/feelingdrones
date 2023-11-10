@@ -17,6 +17,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/StampedInt8MultiArray.msg"
   "msg/StampedInt32MultiArray.msg"
+  "msg/StampedInt8.msg"
   DEPENDENCIES std_msgs
  )
 ament_export_dependencies(rosidl_default_runtime)
