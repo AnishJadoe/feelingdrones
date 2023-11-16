@@ -24,7 +24,7 @@ public:
 private: 
 
 
-    enum class States {IDLE, HOVER, MOVING, TOUCHED, GRASP, EVALUATE, REFINE, SEARCHING};
+    enum class States {IDLE, HOVER, MOVING, TOUCHED, GRASP, EVALUATE, REFINE, SEARCHING, LAND};
     States _current_state;
 
     uint8_t _nav_state, _arming_state, _gripper_state;
@@ -63,8 +63,9 @@ private:
     Eigen::Vector3d _goal_pos;
     Eigen::Vector3d _est_pos;
     Eigen::Vector3d _touch_pos; // Location of touch event
+    Eigen::Vector3d _grasp_pos;
     Eigen::Vector3d _obj_pos; // Location of object
-    
+    Eigen::Vector3d _init_pos = {0.0, 0.0, -0.8};
     float _ref_yaw;
     int8_t _tactile_state[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
     int8_t _touched_state[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
@@ -75,6 +76,8 @@ private:
     float _t_touch;
     float _x_search;
     float _y_search;
+    float _t_evaluate;
+    float _t_land;
 
 
 
@@ -103,11 +106,14 @@ private:
     void _tactile_controller();
     
     void _hover_event_handler();
-    void _searching_event_handler();
+    void _rect_searching_event_handler();
+    void _elipse_searching_event_handler();
+    void _zigzag_searching_event_handler();
     void _moving_event_handler();
     void _touch_event_handler();
     void _grasp_event_handler();
     void _evaluate_event_handler();
+    void _land_event_handler();
 
 
 
@@ -116,6 +122,7 @@ private:
     void _move_drone();
 
     Eigen::Vector3d _setpoint_generator(float t_trajectory);
+    
     void _update_gripper_state_callback(const std_msgs::msg::Int8::SharedPtr msg);
 
     void _status_callback(const px4_msgs::msg::VehicleStatus::SharedPtr msg);

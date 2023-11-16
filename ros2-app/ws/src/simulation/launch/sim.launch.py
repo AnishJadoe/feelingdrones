@@ -63,8 +63,8 @@ def generate_launch_description():
         ExecuteProcess(
             cmd=[
                 PX4_RUN_DIR + '/build/px4_sitl_default/bin/px4',
-                ]),
-
+                ],
+            output='screen'),
         # # Launch GZ-ROS2 Bridge
         bridge,
         # mocap_forwarder
