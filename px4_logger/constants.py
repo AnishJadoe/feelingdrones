@@ -6,6 +6,7 @@ GRASP = 4
 EVALUATE = 5
 REFINE = 6
 SEARCHING =7
+LAND = 8
 
 TRAJECTORY_SETPOINT = 'trajectory_setpoint'
 VEHICLE_ODOMETRY = 'vehicle_odometry'

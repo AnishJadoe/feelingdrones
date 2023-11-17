@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -6,7 +5,11 @@ from rosbags.typesys import get_types_from_msg, register_types
 from rosbags.rosbag2 import Reader
 from rosbags.serde import deserialize_cdr
 
-
+def transform_ENU_NED(pose):
+    x = pose.y
+    y = pose.x
+    z = -1 * pose.z
+    return np.array([x,y,z])
          
 # Function for guessing ros message tupe
 def guess_msgtype(path: Path) -> str:
@@ -92,7 +95,7 @@ def get_command_data(topic,reader):
 
 def get_bar_data(topic, reader):
     # Init the arrays for plotting
-    data = []
+    position_data = []
     t_ref = []
     # topic and msgtype information is available on .connections list
     for connection in reader.connections:
@@ -103,9 +106,11 @@ def get_bar_data(topic, reader):
         topics_set.add(connection.topic)
         if connection.topic == topic:
             msg = deserialize_cdr(rawdata, connection.msgtype)
-            data += [msg.pose.position] 
+            position_data+= [transform_ENU_NED(msg.pose.position)] 
             t_ref += [timestamp]
-    df = pd.DataFrame(data=data, columns=['x', 'y','z'], index=t_ref)
+    df = pd.DataFrame(data=position_data, columns=['x', 'y','z'], index=t_ref)
+    
+    
     return df
 
 def normalize_time(data_dict):

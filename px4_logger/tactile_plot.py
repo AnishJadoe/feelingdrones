@@ -1,7 +1,8 @@
+from matplotlib.colors import ListedColormap
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as ColorMapper
-from matplotlib.patches import Polygon 
+from matplotlib.patches import Patch, Polygon 
 from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
 from pathlib import Path
 import pandas as pd
@@ -20,6 +21,38 @@ EVALUATE = 5
 REFINE = 6
 SEARCHING =7
 
+state_mapping = {IDLE : 'Idle',
+                HOVER: 'Hover',
+                MOVING:'Moving',
+                TOUCHED: 'Touched',
+                GRASP: 'Grasping',
+                EVALUATE: 'Evaluating',
+                REFINE: 'Refining',
+                SEARCHING: 'Searching'}
+
+# Function to find intervals
+def find_intervals(sensor_data):
+    intervals = {}
+    for column in sensor_data.columns:
+        on_intervals = []
+        is_on = False
+        start_time = None
+
+        for index, value in sensor_data[column].items():
+            if value == 1 and not is_on:
+                is_on = True
+                start_time = index
+            elif value == 0 and is_on:
+                is_on = False
+                on_intervals.append((start_time, index))
+
+        # Check if the last interval continues until the end of the data
+        if is_on:
+            on_intervals.append((start_time, sensor_data.index[-1]))
+
+        intervals[column] = on_intervals
+
+    return intervals
 
 sensor_name_mapping = {
         6:'Bottom Phalange 1', 
@@ -38,7 +71,7 @@ sensor_name_mapping = {
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/14_11/test_tactile_4'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/spider_plot/test_tactile_4'
 data_dict = get_data_dict(path)
 
 df_ref = data_dict[TRAJECTORY_SETPOINT]
@@ -53,8 +86,8 @@ touched = df_command[df_command['state'] == TOUCHED].index
 grasping = df_command[df_command['state'] == GRASP].index
 evaluating = df_command[df_command['state'] == EVALUATE].index
 
-t_start = min(df_ref.index)
-t_end = max(df_ref.index)
+t_start = min(searching)
+t_end = max(evaluating)
 
 df_ref = df_ref.loc[t_start:t_end]
 df_mocap = df_mocap.loc[t_start:t_end]
@@ -67,38 +100,48 @@ df_command = df_command.loc[t_start:t_end]
 
 axes = ['x','y','z']
 fig,ax = plt.subplots(4,1)
+
+cmap = ColorMapper.get_cmap('Pastel2', df_command['state'].nunique())
+# Create a color list for each unique state
+state_colors = [cmap(i) for i in range(df_command['state'].nunique())]
+custom_cmap = ListedColormap(state_colors)
 for i,axes in enumerate(axes):
     ax[i].plot(df_ref.index,df_ref[axes], label='reference')
-    ax[i].plot(df_est.index,df_est[axes], label='estimated odometry')
+    # ax[i].plot(df_est.index,df_est[axes], label='estimated odometry')
     ax[i].plot(df_mocap.index,df_mocap[axes], label='mocap')
     ax[i].hlines(df_bar[axes].iloc[0],xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='bar')
-    ax[i].set_title(axes.capitalize())
+    ax[i].imshow([df_command['state']], cmap=custom_cmap, aspect='auto', extent=[df_command.index.min(), df_command.index.max(), df_mocap[axes].min(), df_mocap[axes].max()], alpha=0.5)
+    ax[i].set_ylabel(f'{axes.capitalize()} [m]')
+    ax[i].set_xticks([])
+    ax[i].set_xticklabels([])
+    ax[i].grid()     
 
+# Doing it by hand because i have no idea how to fix this 
+
+color_mappnig_matrix = {'Searching':cmap(3),
+                        'Touched':cmap(0),
+                        'Grasping':cmap(1),
+                        'Evaluating':cmap(2)}
+legend_handles = [Patch(color=color, label=label) for label,color in color_mappnig_matrix.items()]
 
 df_sensors = df_sensors.mask(df_sensors - df_sensors.iloc[0] <= -10, 1)
 df_sensors = df_sensors.mask(df_sensors > 1, 0)
 
+ax[3].imshow([df_command['state']], cmap=cmap, aspect='auto', extent=[df_command.index.min(), df_command.index.max(), 0, 9], alpha=0.5)
+sensor_data = find_intervals(df_sensors)
+cmap = ColorMapper.get_cmap('tab10')
+color_mapper = {}
+for (sensor, intervals) ,color in zip(sensor_data.items(),cmap.colors):
+    for interval in intervals:
+        start_time, end_time = interval
+        ax[3].fill_betweenx(y=[sensor], x1=start_time, x2=end_time,color=color,linewidth=5, label=sensor)
+        color_mapper[sensor] = color
 
-for i in range(12):
-        if (df_sensors[f'sensor_{i}'].sum() > 1):
-            ax[3].plot(df_sensors.index,
-                    df_sensors[f'sensor_{i}'],
-                    label=sensor_name_mapping[i]
-                    )
-            
-cmap = ColorMapper.get_cmap('Pastel2')
-for i in range(4):
-    ax[i].set_xlim(t_start,t_end)
-    if len(searching):
-        ax[i].axvspan(min(searching), max(searching), facecolor=cmap.colors[0], alpha=0.5, label='Searching')
-    if len(touched):
-        ax[i].axvspan(min(touched), max(touched), facecolor=cmap.colors[1], alpha=0.5, label='Touched')
-    if len(grasping):
-        ax[i].axvspan(min(grasping), max(grasping), facecolor=cmap.colors[2], alpha=0.5, label='Grasping')
-    if len(evaluating):
-        ax[i].axvspan(min(evaluating), max(evaluating), facecolor=cmap.colors[3], alpha=0.5, label='Evaluating')
-    ax[i].grid()
-    ax[i].legend()
+ax[3].set_yticks([0,1,2,3,4,5,6,7,8])
+ax[3].set_yticklabels(list(sensor_data.keys())[:9])
+ax[3].grid()       
 
+fig.legend(handles=legend_handles)
 ax[2].invert_yaxis()
+ax[3].set_xlabel('Time [s]')
 plt.show()
