@@ -14,3 +14,25 @@ MOCAP = 'mocap'
 TACTILE_DATA = 'tactile_data'
 DRONE_STATE = 'drone_state'
 BAR_POSE = 'bar_pose'
+
+# Finger 1
+TOP_PHALANGE_1 = 8
+MID_PHALANGE_1 = 7 
+BOT_PHALANGE_1 = 6 
+
+# Finger 2
+TOP_PHALANGE_2 = 5 
+MID_PHALANGE_2 = 4 
+BOT_PHALANGE_2 = 3 
+
+# Finger 3
+TOP_PHALANGE_3 = 2 
+MID_PHALANGE_3 = 1 
+BOT_PHALANGE_3 = 0 
+
+Y1 = 0.02
+Y2 = 0.05
+Y3 = 0.09
+
+X1 =  0.035
+Z = 0.08

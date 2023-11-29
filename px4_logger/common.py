@@ -1,6 +1,4 @@
 from constants import *
-from data_loader import get_data_dict
-
 def get_trajectories(df,trajectories, trajectory_start):
     
     
@@ -20,17 +18,3 @@ def get_trajectories(df,trajectories, trajectory_start):
     trajectories = get_trajectories(df_trajectory, trajectories, current_timestamp)
     
     return trajectories
-    
-path = "/home/anish/Documents/Thesis/Drone/ros2_bag_files/succesfull_perches/test_tactile_success_1/"
-data_dict = get_data_dict(path)
-
-df_ref = data_dict[TRAJECTORY_SETPOINT]
-df_mocap = data_dict[MOCAP]
-df_est = data_dict[VEHICLE_ODOMETRY]
-df_bar = data_dict[BAR_POSE]
-df_sensors = data_dict[TACTILE_DATA]
-df_command = data_dict[DRONE_STATE]
-trajectories = []
-trajectory_start = min(df_command[df_command['state'] == TOUCHED].index)
-trajectories = get_trajectories(df_command, trajectories, trajectory_start)
-print(trajectories)

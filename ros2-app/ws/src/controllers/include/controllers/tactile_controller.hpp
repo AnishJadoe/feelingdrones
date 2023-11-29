@@ -78,6 +78,7 @@ private:
     float _y_search;
     float _t_evaluate;
     float _t_land;
+    float _goal_norm;
 
 
 

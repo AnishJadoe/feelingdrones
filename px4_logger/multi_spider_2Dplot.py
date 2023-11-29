@@ -16,7 +16,7 @@ def plot_2D_trajectory(ax, df):
 
 
 # File path to rosbag
-folder_path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/14_11'
+folder_path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/17_11'
 
 
 fig,ax = plt.subplots()
@@ -44,19 +44,21 @@ for path in os.listdir(folder_path):
     plot_2D_trajectory(ax,df_est)
     
 
-ax.set_xlabel('X [M]')
-ax.set_ylabel('Y [M]')
+ax.set_xlabel('X [m]')
+ax.set_ylabel('Y [m]')
+ax.set_title('Tactile controller reference positions after touch event')
 bar_x = df_bar['x'].iloc[0]
 bar_y = df_bar['y'].iloc[0]
 
 
-color_mappnig_matrix = {'Grasp Point': 'green',
-                        'Touch Point':'red'}
+color_mappnig_matrix = {'Grasp Position': 'green',
+                        'Touch Position':'red'}
 legend_handles = [Patch(color=color, label=label) for label,color in color_mappnig_matrix.items()]
 
 # Plot the axis line representing the object
 object_center = (bar_x,bar_y)
 axis_length = 1  # Adjust the axis length as needed
-ax.plot([object_center[0] - axis_length / 2, object_center[0] + axis_length / 2], [object_center[1], object_center[1]], color='blue', linewidth=5)
+ax.plot([object_center[0] - axis_length / 2, object_center[0] + axis_length / 2], [object_center[1], object_center[1]], color='blue', linewidth=5, label='Perching Object')
 ax.legend(handles=legend_handles)
-plt.show()
+# plt.show()
+# plt.savefig('/home/anish/Documents/Thesis/Plots/spider_plot.pdf', format='pdf')

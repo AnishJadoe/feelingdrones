@@ -38,7 +38,7 @@ register_types(add_types)
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/14_11/test_tactile_4'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/28_11/test_tactile_10'
 
 # Topics to collect data from
 topics=['/fmu/in/trajectory_setpoint',
@@ -185,7 +185,7 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 ax.scatter(x_ref, y_ref, z_ref,marker='o', s=10, alpha=0.2, label='Drone Reference Trajectory')
 ax.scatter(x_est, y_est, z_est,c=x_est.index,cmap=cmap, norm=norm,label='Drone Estimated Position', marker='o', s=10, alpha=0.9)
-ax.scatter(x_est[0], y_est[0], z_est[0], color='red', label='Touch Location')
+# ax.scatter(x_est.iloc[0], y_est[0], z_est[0], color='red', label='Touch Location')
 
 cbar = fig.colorbar(sm, ax=ax, label='Time')
 # ax.annotate('Beginning', (df_ref['x'].iloc[0],df_ref['y'].iloc[0]))

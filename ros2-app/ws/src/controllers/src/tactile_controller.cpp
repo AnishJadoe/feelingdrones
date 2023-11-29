@@ -3,7 +3,11 @@
 #include <vector>
 
 // Constants
-float EPSILON = 0.05; 
+float EPSILON_SEARCH = 0.15;
+float EPSILON_TOUCH = 0.10; 
+float EPSILON_GRASP = 0.08;
+float EPSILON_REFINE = 0.05;
+
 float BOUNDS = 0.2;
 int8_t OPEN = 1;
 int8_t CLOSED = 0; 
@@ -69,9 +73,12 @@ FeelyDrone::FeelyDrone()
 
     /* Init Ref Pose */
     this->_ref_pos = {this->_init_pos.x(), this->_init_pos.y(), this->_init_pos.z()};
-    this->_goal_pos = {0.0,0.0,-0.8};
+    this->_goal_pos = {0.0,0.0,0.0};
     this->_ref_yaw = 0.0;
     this->_est_pos = {0.0,0.0,0.0};
+    this->_goal_norm = EPSILON_TOUCH;
+    RCLCPP_INFO(this->get_logger(), "NORM IS: %f", this->_goal_norm);
+
  
 
     //Start counter
@@ -114,9 +121,9 @@ void FeelyDrone::_timer_callback()
         // /* On the real system we want to arm and change mode using the remote control
         //     Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
         // // Change to Offboard mode after 10 setpoints
-        this->arm();
-        this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
-        RCLCPP_INFO(this->get_logger(), "SIM IS RUNNING");
+        // this->arm();
+        // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+        // RCLCPP_INFO(this->get_logger(), "SIM IS RUNNING");
         // // // Arm the vehicle
         this->_change_state(States::HOVER);
     }
@@ -145,6 +152,7 @@ void FeelyDrone::_timer_callback()
 
 if (this->_current_state == States::LAND){
         this->_land_event_handler();
+        return;
     }
 
 
@@ -169,29 +177,35 @@ Eigen::Vector3d FeelyDrone::_setpoint_generator(float t_trajectory){
 void FeelyDrone::_hover_event_handler()
 {
     double t = (this->now() - this->_beginning).seconds();
-
-    if (t > 7 && !this->_landed && this->_gripper_state != OPEN){
+    Eigen::Vector3d start_pos = {0,0,-0.8};
+    if (t >= 8 && t < 20 && !this->_landed){
+        this->_ref_pos = start_pos;
+    }
+    if (t >= 12 && !this->_landed && this->_gripper_state != OPEN){
         std_msgs::msg::Int8 msg{};
         msg.data = OPEN; 
         this->_gripper_publisher->publish(msg);
         return;
     }
 
+
+
     if (t > 20 && !this->_landed){
-        // float t_hover = t - 25;
-        // float velocity = 0.15;
-        // this->_goal_pos = {this->_obj_pos.x(), this->_obj_pos.y(), this->_obj_pos.z() + 0.2};
-        // float norm = (this->_est_pos - this->_goal_pos).norm();
-        // bool at_pos = norm < EPSILON;
+        float t_hover = t - 20;
+        float velocity = 0.15;
+        this->_goal_pos = {this->_obj_pos.x(), this->_obj_pos.y(), this->_obj_pos.z()};
+        float norm = (this->_est_pos - this->_goal_pos).norm();
+        bool at_pos = norm < EPSILON_SEARCH;
         
-        this->_t_search = t;
-        this->_change_state(States::SEARCHING);
-    
-        // else{
-        //     this->_ref_pos = this->_init_pos + t_hover * (this->_goal_pos - this->_init_pos).normalized() * velocity;
-        // }
-        // RCLCPP_INFO(this->get_logger(), "Flying to position [x: %f, y: %f, z: %f]", this->_ref_pos.x(), this->_ref_pos.y(), this->_ref_pos.z());
-        // RCLCPP_INFO(this->get_logger(), "Norm: %f", norm  );
+        if (at_pos){
+            this->_t_search = t;
+            this->_change_state(States::SEARCHING);
+        }
+        else{
+            this->_ref_pos = start_pos + t_hover * (this->_goal_pos - start_pos).normalized() * velocity;
+            RCLCPP_INFO(this->get_logger(), "Flying to position [x: %f, y: %f, z: %f]", this->_ref_pos.x(), this->_ref_pos.y(), this->_ref_pos.z());
+            RCLCPP_INFO(this->get_logger(), "Norm: %f", norm  );
+        }
 
         return;
 
@@ -303,10 +317,10 @@ void FeelyDrone::_rect_searching_event_handler(){
 void FeelyDrone::_elipse_searching_event_handler(){
     double t = (this->now() - this->_beginning).seconds();
     float t_trajectory = t - this->_t_search;
-    double period = 10;    
+    double period = 6;    
     float height_step = -0.03;
     // Define bounds for search trajectory 
-    float x_amplitude = 0.15;
+    float x_amplitude = 0.05;
     float y_amplitude = 0.10;
     float angular_velocity = 2 * M_PI / period;
     float height_angular_velocity = 0.5 * M_PI / period;
@@ -314,9 +328,9 @@ void FeelyDrone::_elipse_searching_event_handler(){
     
     float x_offset = x_amplitude * cos(angular_velocity * t_trajectory);
     float y_offset = y_amplitude * sin(angular_velocity * t_trajectory);
-    float z_offset = height_step * this->_period_counter - 0.03 * sin(height_angular_velocity * t_trajectory);
+    float z_offset = height_step * this->_period_counter; // - 0.03 * sin(height_angular_velocity * t_trajectory);
 
-    Eigen::Vector3d center_search = {this->_obj_pos.x(), this->_obj_pos.y(), this->_obj_pos.z() + 0.2};
+    Eigen::Vector3d center_search = {this->_obj_pos.x(), this->_obj_pos.y(), this->_obj_pos.z()};
     Eigen::Vector3d offset = {x_offset,y_offset,z_offset};
     this->_ref_pos = center_search + offset;
     // Update period counter
@@ -372,7 +386,7 @@ void FeelyDrone::_touch_event_handler()
     float bot_phal_y = 0.02;
 
     float phal_x = 0.035;
-    float base_z = 0.08;
+    float base_z = 0.05;
 
     float velocity = 0.01;
 
@@ -439,14 +453,15 @@ void FeelyDrone::_touch_event_handler()
     
     RCLCPP_INFO(this->get_logger(), "Goal position is [x: %f, y: %f, z: %f]", this->_goal_pos.x(), this->_goal_pos.y(), this->_goal_pos.z());
     RCLCPP_INFO(this->get_logger(), "Calculated ALIGNING Norm: %f", norm  );
-    bool at_pos = norm < EPSILON;
-    bool within_bounds = norm < BOUNDS;
+    bool at_pos = norm <= this->_goal_norm;
+    bool within_bounds = norm <= BOUNDS;
 
     if (within_bounds){
         if (at_pos){
-            RCLCPP_INFO(this->get_logger(), "AT POSITION");
             this->_ref_pos = this->_goal_pos;
+            this->_goal_norm = EPSILON_GRASP;
             this->_change_state(States::GRASP);
+            RCLCPP_INFO(this->get_logger(), "AT POSITION, NORM IS: %f", this->_goal_norm);
             return;
         }
         else{
@@ -462,10 +477,10 @@ void FeelyDrone::_touch_event_handler()
 
 void FeelyDrone::_grasp_event_handler(){
 
-    this->_ref_pos.z() = this->_goal_pos.z() - 0.05;
     float norm = (this->_est_pos - this->_ref_pos).norm();
 
     if (this->_gripper_state != OPEN){        
+        this->_ref_pos.z() = this->_goal_pos.z() + 0.15;
         std_msgs::msg::Int8 msg{};
         msg.data = OPEN; 
         this->_gripper_publisher->publish(msg);
@@ -473,69 +488,95 @@ void FeelyDrone::_grasp_event_handler(){
     }
 
     else{
-    if ( norm < EPSILON)
-        {
-            std_msgs::msg::Int8 msg{};
-            msg.data = CLOSED; 
-            RCLCPP_INFO(this->get_logger(), "GRASPING" );
-            this->_gripper_publisher->publish(msg);
-            this->_t_evaluate = (this->now() - this->_beginning).seconds();
-            this->_change_state(States::EVALUATE);
-    
+        this->_ref_pos.z() = this->_goal_pos.z();
+        if ( norm <= this->_goal_norm)
+            {
+                std_msgs::msg::Int8 msg{};
+                msg.data = CLOSED; 
+                RCLCPP_INFO(this->get_logger(), "GRASPING, NORM EQUALS: %f", norm );
+                this->_gripper_publisher->publish(msg);
+                this->_t_evaluate = (this->now() - this->_beginning).seconds();
+                this->_change_state(States::EVALUATE);
+        
+                return;
+            }
+        else{
+            RCLCPP_INFO(this->get_logger(), "ALIGNING, NORM EQUALS: %f", norm );
             return;
         }
-    else{
-        RCLCPP_INFO(this->get_logger(), "ALIGNING" );
     }
-    }
+
 }
 
 void FeelyDrone::_evaluate_event_handler(){
     float t = (this->now() - this->_beginning).seconds();
     float t_evaluating = t - this->_t_evaluate;
 
-    if (t_evaluating >= 1.5){
-        int8_t state_finger_1  = this->_touched_state[BOT_PHALANGE_1] + this->_touched_state[MID_PHALANGE_1] + this->_touched_state[TOP_PHALANGE_1];
-        int8_t state_finger_2  = this->_touched_state[BOT_PHALANGE_2] + this->_touched_state[MID_PHALANGE_2] + this->_touched_state[TOP_PHALANGE_2];
-        int8_t state_finger_3  = this->_touched_state[BOT_PHALANGE_3] + this->_touched_state[MID_PHALANGE_3] + this->_touched_state[TOP_PHALANGE_3];
-
-        bool stable_grasp = (state_finger_1 >= 1) && (state_finger_2 >= 1) && (state_finger_3 >= 1);
-
+    if (t_evaluating >= 1){
         RCLCPP_INFO(this->get_logger(), "Got tactile state:" );
         for (int i =0; i <12; ++i){
                 RCLCPP_INFO(this->get_logger(), "%d",this->_touched_state[i]);
             }
 
+        int8_t state_finger_1  = this->_touched_state[BOT_PHALANGE_1] + this->_touched_state[MID_PHALANGE_1] + this->_touched_state[TOP_PHALANGE_1];
+        int8_t state_finger_2  = this->_touched_state[BOT_PHALANGE_2] + this->_touched_state[MID_PHALANGE_2] + this->_touched_state[TOP_PHALANGE_2];
+        int8_t state_finger_3  = this->_touched_state[BOT_PHALANGE_3] + this->_touched_state[MID_PHALANGE_3] + this->_touched_state[TOP_PHALANGE_3];
+
+        bool stable_grasp = (state_finger_1 >= 1) && (state_finger_2 >= 1) && (state_finger_3 >= 1);
+        bool go_left = (state_finger_3 < 1) && (state_finger_1 >=1) && (state_finger_2 >= 1);
+        bool go_up = (state_finger_3 < 1) && (state_finger_1 < 1) && (state_finger_2 < 1);
+        bool try_again = !stable_grasp || !go_left || !go_up;
+
+
         if(stable_grasp){
             RCLCPP_INFO(this->get_logger(), "SUCCES" );
             this->_t_land = (this->now() - this->_beginning).seconds();
             this->_change_state(States::LAND);
+            return;
         }
-        else{
-            this->_goal_pos.z() = this->_goal_pos.z() - 0.01;
-            RCLCPP_INFO(this->get_logger(), "TRYING AGAIN" );
+
+        if(go_up){
+            this->_goal_norm = EPSILON_REFINE;
+            this->_goal_pos.z() = this->_goal_pos.z() - 0.05;
+            RCLCPP_INFO(this->get_logger(), "GOING UP, NORM IS: %f", this->_goal_norm );
             this->_change_state(States::GRASP);
-    }
+            return;
+
+        }
+
+        if(go_left)
+        {
+            this->_goal_norm = EPSILON_REFINE;
+            this->_goal_pos.x() = this->_goal_pos.x() - 0.05;
+            RCLCPP_INFO(this->get_logger(), "GOING LEFT, NORM IS: %f", this->_goal_norm  );
+            this->_change_state(States::GRASP);
+            return;
+
+        }
+
+        if(try_again)
+        {
+            this->_goal_norm = EPSILON_REFINE;
+            RCLCPP_INFO(this->get_logger(), "TRYING AGAIN NORM IS: %f", this->_goal_norm );
+            this->_change_state(States::GRASP);
+            return;
+
+        }
+
     }
     else{
-        RCLCPP_INFO(this->get_logger(), "EVALUATING CURRENT GRASP");
+        // RCLCPP_INFO(this->get_logger(), "EVALUATING CURRENT GRASP");
+        return;
     }
 }
 
 void FeelyDrone::_land_event_handler(){
+    RCLCPP_INFO(this->get_logger(), "LANDING" );
     double t = (this->now() - this->_beginning).seconds();
     double t_landing = t - this->_t_land;
-    if (t_landing <= 10){
-        RCLCPP_INFO(this->get_logger(), "LANDING");
-        this->land();
-    }
-    else{
-        RCLCPP_INFO(this->get_logger(), "DISARM");
-        this->disarm();
-    }
-
-
+    this->land();
 }
+
 void FeelyDrone::_publish_trajectory_setpoint()
 {
 
@@ -608,14 +649,14 @@ void FeelyDrone::_tactile_callback(const custom_msgs::msg::StampedInt32MultiArra
         }
         return;
     }
-
+    int SENSOR_THRESHOLD = -8;
     // Preprocessor, should be different function
     if (msg->data.size() == 12){
         for (int i = 0; i < 12; ++i){
             this->_current_raw_tactile_data[i] = msg->data[i];
         }
         for (int i =0; i < 12; ++i){
-            if (this->_current_raw_tactile_data[i] - this->_init_raw_tactile_data[i] <= -10){
+            if (this->_current_raw_tactile_data[i] - this->_init_raw_tactile_data[i] <= SENSOR_THRESHOLD){
                 this->_tactile_state[i] = 1;
             }
             else{
@@ -630,14 +671,8 @@ void FeelyDrone::_tactile_callback(const custom_msgs::msg::StampedInt32MultiArra
             
             if (this->_tactile_state[i] > 0) {
             RCLCPP_INFO(this->get_logger(), " Current tactile state: ");
-            for (int i =0; i <12; ++i){
-                RCLCPP_INFO(this->get_logger(), "%d",this->_tactile_state[i]);
-            }
             RCLCPP_INFO(this->get_logger(), "Touched on pad %d", i );
-
             // All info going to the touch controller, refactor this into a seperate class?
-
-
             for (int i =0; i <12; ++i){
             this->_touched_state[i] = this->_tactile_state[i];
             }
@@ -648,6 +683,7 @@ void FeelyDrone::_tactile_callback(const custom_msgs::msg::StampedInt32MultiArra
             this->_position_set = false;
             RCLCPP_INFO(this->get_logger(), "Current position is [x: %f, y: %f, z: %f]", this->_touch_pos.x(), this->_touch_pos.y(), this->_touch_pos.z());
             this->_change_state(States::TOUCHED);
+            return;
             } 
         }
         } 
@@ -657,6 +693,7 @@ void FeelyDrone::_tactile_callback(const custom_msgs::msg::StampedInt32MultiArra
             this->_touched_state[i] = this->_tactile_state[i];
             }
         }
+        return;
 }
 
 void FeelyDrone::_status_callback(const px4_msgs::msg::VehicleStatus::SharedPtr msg)
@@ -671,9 +708,19 @@ void FeelyDrone::_reference_callback(const geometry_msgs::msg::PoseStamped::Shar
     Eigen::Vector3d position = {msg->pose.position.x, msg->pose.position.y,  msg->pose.position.z};
     // transform to px4 (ned) frame
     position = px4_ros_com::frame_transforms::enu_to_ned_local_frame(position);
-    this->_obj_pos.x() = position.x();
-    this->_obj_pos.y() = position.y();
-    this->_obj_pos.z() = position.z();
+    float x_offset = 0.0;
+    float y_offset = 0.0;
+    float z_offset = 0.35;
+
+
+    this->_obj_pos.x() = position.x() + x_offset;
+    this->_obj_pos.y() = position.y() + y_offset;
+    this->_obj_pos.z() = position.z() + z_offset;
+
+    // RCLCPP_INFO(this->get_logger(), "MOCKING POSITION");
+    // this->_obj_pos.x() = 0;
+    // this->_obj_pos.y() = 0;
+    // this->_obj_pos.z() = -0.8;
 
 }
 

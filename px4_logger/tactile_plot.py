@@ -1,16 +1,12 @@
 from matplotlib.colors import ListedColormap
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as ColorMapper
-from matplotlib.patches import Patch, Polygon 
-from matplotlib.ticker import (MultipleLocator, AutoMinorLocator)
-from pathlib import Path
-import pandas as pd
-from rosbags.typesys import get_types_from_msg, register_types
-from rosbags.rosbag2 import Reader
-from rosbags.serde import deserialize_cdr
+from matplotlib.patches import Patch
 from constants import *
 from data_loader import get_data_dict
+
+
+
 
 IDLE = 0  
 HOVER = 1
@@ -71,7 +67,7 @@ sensor_name_mapping = {
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/spider_plot/test_tactile_4'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/28_11/test_tactile_10'
 data_dict = get_data_dict(path)
 
 df_ref = data_dict[TRAJECTORY_SETPOINT]
@@ -86,8 +82,8 @@ touched = df_command[df_command['state'] == TOUCHED].index
 grasping = df_command[df_command['state'] == GRASP].index
 evaluating = df_command[df_command['state'] == EVALUATE].index
 
-t_start = min(searching)
-t_end = max(evaluating)
+t_start = 0
+t_end = 120
 
 df_ref = df_ref.loc[t_start:t_end]
 df_mocap = df_mocap.loc[t_start:t_end]
@@ -107,14 +103,14 @@ state_colors = [cmap(i) for i in range(df_command['state'].nunique())]
 custom_cmap = ListedColormap(state_colors)
 for i,axes in enumerate(axes):
     ax[i].plot(df_ref.index,df_ref[axes], label='reference')
-    # ax[i].plot(df_est.index,df_est[axes], label='estimated odometry')
+    ax[i].plot(df_est.index,df_est[axes], label='estimated odometry')
     ax[i].plot(df_mocap.index,df_mocap[axes], label='mocap')
-    ax[i].hlines(df_bar[axes].iloc[0],xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='bar')
-    ax[i].imshow([df_command['state']], cmap=custom_cmap, aspect='auto', extent=[df_command.index.min(), df_command.index.max(), df_mocap[axes].min(), df_mocap[axes].max()], alpha=0.5)
-    ax[i].set_ylabel(f'{axes.capitalize()} [m]')
+    ax[i].hlines(df_bar[axes].iloc[-1],xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='bar')
+    ax[i].imshow([df_command['state']], cmap=custom_cmap, aspect='auto', extent=[df_command.index.min(), df_command.index.max(), -10, 10], alpha=0.5)
+    ax[i].set_ylabel(f'{axes.capitalize()} [m]', fontsize=5)
     ax[i].set_xticks([])
     ax[i].set_xticklabels([])
-    ax[i].grid()     
+    ax[i].legend(fontsize=5, loc='upper right')
 
 # Doing it by hand because i have no idea how to fix this 
 
@@ -134,14 +130,25 @@ color_mapper = {}
 for (sensor, intervals) ,color in zip(sensor_data.items(),cmap.colors):
     for interval in intervals:
         start_time, end_time = interval
-        ax[3].fill_betweenx(y=[sensor], x1=start_time, x2=end_time,color=color,linewidth=5, label=sensor)
+        ax[3].fill_betweenx(y=[sensor], x1=start_time, x2=end_time,color='blue',linewidth=3, label=sensor)
         color_mapper[sensor] = color
 
 ax[3].set_yticks([0,1,2,3,4,5,6,7,8])
-ax[3].set_yticklabels(list(sensor_data.keys())[:9])
+# ax[3].set_yticklabels(list(sensor_data.keys())[:9][-1])
+ax[3].set_yticklabels([0,1,2,3,4,5,6,7,8])
 ax[3].grid()       
-
-fig.legend(handles=legend_handles)
-ax[2].invert_yaxis()
+ax[3].set_ylabel('Sensor ID',fontsize=5)
+for i in range(4):
+    ax[i].tick_params(axis='both', which='major', labelsize=5)
+    
+fig.legend(handles=legend_handles,loc='upper left', fontsize=5)
+fig.suptitle('Drone trajectory and tactile output during a single experiment', fontsize=10)
 ax[3].set_xlabel('Time [s]')
+ax[0].set_ylim(-5,5)
+ax[1].set_ylim(-5,5)
+ax[2].set_ylim(-6,-0)
+ax[2].invert_yaxis()
+
+
 plt.show()
+# plt.savefig('/home/anish/Documents/Thesis/Plots/tactile_plot_with_evaluation.png', format='png',dpi=1200)
