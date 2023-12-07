@@ -21,16 +21,29 @@ def get_trajectories(df,trajectories, trajectory_start):
     
     return trajectories
     
-path = "/home/anish/Documents/Thesis/Drone/ros2_bag_files/succesfull_perches/test_tactile_success_1/"
+def get_tries(df):
+    # Initialize variables
+    grasp_attempts = 0
+    in_grasp_state = False
+
+    # Iterate through the DataFrame
+    for _, row in df.iterrows():
+        current_state = row['state']
+
+        # Check if the drone is in the GRASP state
+        if current_state == 4:
+            in_grasp_state = True
+
+        # Check if the drone transitions from GRASP to EVALUATE or from EVALUATE back to GRASP
+        elif in_grasp_state and current_state in [5, 8]:
+            grasp_attempts += 1
+            in_grasp_state = False
+        
+    return grasp_attempts
+
+path = "/home/anish/Documents/Thesis/Drone/ros2_bag_files/closed_loop_tactile_7_12/test_tactile_4/"
 data_dict = get_data_dict(path)
 
-df_ref = data_dict[TRAJECTORY_SETPOINT]
-df_mocap = data_dict[MOCAP]
-df_est = data_dict[VEHICLE_ODOMETRY]
-df_bar = data_dict[BAR_POSE]
-df_sensors = data_dict[TACTILE_DATA]
 df_command = data_dict[DRONE_STATE]
-trajectories = []
-trajectory_start = min(df_command[df_command['state'] == TOUCHED].index)
-trajectories = get_trajectories(df_command, trajectories, trajectory_start)
+trajectories = get_tries(df_command)
 print(trajectories)

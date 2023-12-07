@@ -63,8 +63,8 @@ def plot_3D_trajectory(ax, df):
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 # File path to rosbag
-folder_path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/23_11'
-path = 'test_tactile_5'
+folder_path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/offset_05'
+path = 'test_tactile_25'
 
 data_dict = get_data_dict(f'{folder_path}/{path}')
 

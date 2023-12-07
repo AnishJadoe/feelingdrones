@@ -79,6 +79,9 @@ private:
     float _t_evaluate;
     float _t_land;
     float _goal_norm;
+    float _y_offset_bar;
+    float _bar_height;
+    uint8_t _grasp_counter = 0;
 
 
 
@@ -103,9 +106,7 @@ private:
     States _get_current_state() const;
     void _change_state(States new_state);
     
-    /*State Machine hadlers*/
-    void _tactile_controller();
-    
+    void _tactile_state_machine();
     void _hover_event_handler();
     void _rect_searching_event_handler();
     void _elipse_searching_event_handler();

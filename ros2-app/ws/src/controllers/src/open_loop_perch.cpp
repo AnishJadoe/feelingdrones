@@ -3,7 +3,7 @@
 #include <vector>
 
 // Constants
-float EPSILON = 0.01; 
+float EPSILON = 0.03; 
 int8_t OPEN = 1;
 int8_t CLOSED = 0; 
 int8_t UNKNOWN = -1; 
@@ -36,6 +36,9 @@ FeelyDrone::FeelyDrone()
     
     this->_gripper_publisher = this->create_publisher<std_msgs::msg::Int8>(
         "/gripper/in/gripper_state", 10);
+
+    this->_drone_state_publisher = this->create_publisher<custom_msgs::msg::StampedInt8>(
+        "/drone/out/state",10);
         
     this->_offboard_publisher = this->create_publisher<px4_msgs::msg::OffboardControlMode>(
         "/fmu/in/offboard_control_mode", 10);
@@ -48,12 +51,13 @@ FeelyDrone::FeelyDrone()
     this->_beginning = this->now();
 
     /* Init Ref Pose */
-    this->_ref_pos = {0.0, 0.0, -1.0};
+    this->_ref_pos = {0.0, 0.0, -0.1};
     this->_ref_yaw = 0.0;
     this->_est_pos = {0.0,0.0,0.0};
 
     //Start counter
     this->_period_counter = 0;
+    this->_change_state(States::HOVER);
 }
 
 std::string FeelyDrone:: stateToString(States state) const{
@@ -72,6 +76,8 @@ std::string FeelyDrone:: stateToString(States state) const{
             return "EVALUATE";
         case States::SEARCHING:
             return "SEARCHING";
+        case States::LAND:
+            return "LANDING";
         default:
             return "UNKNOWN"; // Handle invalid states gracefully
     }
@@ -89,36 +95,24 @@ void FeelyDrone::_timer_callback()
     
     if (_offboard_setpoint_counter == 50) 
     {
-        // /* On the real system we want to arm and change mode using the remote control
-        //     Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
-        // // Change to Offboard mode after 10 setpoints
-        this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
-        // // // Arm the vehicle
-        this->arm();
+        // // /* On the real system we want to arm and change mode using the remote control
+        // //     Uncomment this for the SITL e.g. automatic arming and switch to offboard mode */
+        // // // Change to Offboard mode after 10 setpoints
+        // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+        // // // // Arm the vehicle
+        // this->arm();
 
-        RCLCPP_INFO(this->get_logger(), "Arm now");
-        this->_change_state(States::HOVER);
+        // RCLCPP_INFO(this->get_logger(), "Arm now");
+        // this->_change_state(States::HOVER);
     }
+    this->_publish_drone_state();
+    this->_perching_state_machine();
 
-    // offboard_control_mode needs to be paired with trajectory_setpoint
-    this->_publish_offboard_control_mode();
-
-    if (this->_current_state == States::HOVER){
-        this->_hover_event_handler();
+    if(this->_current_state != States::LAND)
+    {
+        this->_publish_offboard_control_mode();
+        this->_publish_trajectory_setpoint();
     }
-
-    if (this->_current_state == States::MOVING){
-        this->_moving_event_handler();
-    }
-
-    if (this->_current_state == States::GRASP){
-        this->_grasp_event_handler();
-    }
-    if (this->_current_state == States::EVALUATE){
-        this->_evaluate_event_handler();
-    }
-
-    this->_publish_trajectory_setpoint();
 
     // stop the counter after reaching 10
     if (_offboard_setpoint_counter < 51) {
@@ -127,13 +121,41 @@ void FeelyDrone::_timer_callback()
 
 }
 
+void FeelyDrone::_perching_state_machine(){
+    if (this->_current_state == States::HOVER){
+        this->_hover_event_handler();
+        return;
+    }
+
+    if (this->_current_state == States::MOVING){
+        this->_moving_event_handler();
+        return;
+    }
+
+
+    if (this->_current_state == States::GRASP){
+        this->_grasp_event_handler();
+        return;
+    }
+
+    if (this->_current_state == States::LAND){
+        this->_land_event_handler();
+        return;
+    }
+}
+
 void FeelyDrone::_hover_event_handler()
 {
     double t = (this->now() - this->_beginning).seconds();
 
     RCLCPP_INFO(this->get_logger(), "HOVERING" );
 
-    if (t > 5 && !this->_landed && t < 10){
+    Eigen::Vector3d start_pos = {0,0,-0.8};
+    if (t >= 6 && t < 15 && !this->_landed){
+        this->_ref_pos = start_pos;
+    }
+
+    if (t >= 12 && !this->_landed && this->_gripper_state != OPEN){
         std_msgs::msg::Int8 msg{};
         msg.data = OPEN; 
         this->_gripper_publisher->publish(msg);
@@ -141,31 +163,41 @@ void FeelyDrone::_hover_event_handler()
     }
 
     if (t > 15 && !this->_landed){
+        this->_t_moving = t; 
         this->_change_state(States::MOVING);
         return;
 
     }
 }
 void FeelyDrone::_moving_event_handler(){
+
+    double t = (this->now() - this->_beginning).seconds();
+    float t_trajectory = t - this->_t_moving;
     RCLCPP_INFO(this->get_logger(), "MOVING TO OBJECT" );
-    this->_ref_pos.x() = this->_obj_pos.x();
-    this->_ref_pos.y() = this->_obj_pos.y();
-    this->_ref_pos.z() = this->_obj_pos.z() + 0.15;
+    float EPSILON_SEARCH = 0.05;
+    float velocity = 0.15;
+    this->_goal_pos = {this->_obj_pos.x(), this->_obj_pos.y() + 0.15, this->_obj_pos.z() + 0.15};
+    float norm = (this->_est_pos - this->_goal_pos).norm();
+    bool at_pos = norm < EPSILON_SEARCH;    
+    Eigen::Vector3d start_pos = {0,0,-0.8};
     //this->_ref_yaw = M_PI*0.5;
 
-    float norm = (_est_pos - _ref_pos).squaredNorm();
-    if ( norm < EPSILON)
-    {
-        this->_change_state(States::GRASP);
-        return;
-    }
+    if (at_pos){
+            this->_change_state(States::GRASP);
+            return;
+        }
+        else{
+            this->_ref_pos = start_pos + t_trajectory* (this->_goal_pos - start_pos).normalized() * velocity;
+            RCLCPP_INFO(this->get_logger(), "Flying to position [x: %f, y: %f, z: %f]", this->_ref_pos.x(), this->_ref_pos.y(), this->_ref_pos.z());
+            RCLCPP_INFO(this->get_logger(), "Norm: %f", norm  );
+        }
 }
 
 
 void FeelyDrone::_grasp_event_handler(){
 
     this->_ref_pos.x() = this->_obj_pos.x();
-    this->_ref_pos.y() = this->_obj_pos.y();
+    this->_ref_pos.y() = this->_obj_pos.y() + 0.15;
     this->_ref_pos.z() = this->_obj_pos.z() + 0.05;
     RCLCPP_INFO(this->get_logger(), "ALIGNING" );
     float norm = (_est_pos - _ref_pos).squaredNorm();
@@ -176,17 +208,14 @@ void FeelyDrone::_grasp_event_handler(){
         RCLCPP_INFO(this->get_logger(), "GRASPING" );
         this->_gripper_publisher->publish(msg);
 
-        if (this->_gripper_state == CLOSED) {
-        this->_change_state(States::EVALUATE);
+        if (this->_gripper_state == CLOSED){
+            this->_change_state(States::LAND);
         }
         return;
     }
 
 }
 
-void FeelyDrone::_evaluate_event_handler(){
-    RCLCPP_INFO(this->get_logger(), "EVALUATING RESULTS");
-}
 
 void FeelyDrone::_publish_trajectory_setpoint()
 {
@@ -209,6 +238,17 @@ void FeelyDrone::_publish_trajectory_setpoint()
     this->_trajectory_publisher->publish(msg);
 
 }
+void FeelyDrone::_land_event_handler(){
+    RCLCPP_INFO(this->get_logger(), "LANDING" );
+    this->land();
+    return;
+}
+void FeelyDrone::_publish_drone_state(){
+        custom_msgs::msg::StampedInt8 msg{};
+        msg.timestamp = this->get_timestamp();
+        msg.data = (int) this->_current_state; 
+        this->_drone_state_publisher->publish(msg);
+        }
 
 void FeelyDrone::_publish_offboard_control_mode()
 {

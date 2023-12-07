@@ -1,0 +1,189 @@
+[
+    {
+        "test_name": "test_tactile_1",
+        "type":"open_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_2",
+        "type":"open_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_3",
+        "type":"open_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_4",
+        "type":"open_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_5",
+        "type":"open_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": false
+    },
+
+    {
+        "test_name": "test_tactile_6",
+        "type":"open_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_7",
+        "type":"open_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_8",
+        "type":"open_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_9",
+        "type":"open_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_10",
+        "type":"open_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": false
+    },
+
+    {
+        "test_name": "test_tactile_11",
+        "type":"open_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_12",
+        "type":"open_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_13",
+        "type":"open_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_14",
+        "type":"open_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_15",
+        "type":"open_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": false
+    },
+
+
+
+    {
+        "test_name": "test_tactile_1",
+        "type":"closed_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_2",
+        "type":"closed_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_3",
+        "type":"closed_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_4",
+        "type":"closed_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_5",
+        "type":"closed_loop:",
+        "y_offset": 0.0,
+        "perch_succesfull": true
+    },
+
+    {
+        "test_name": "test_tactile_6",
+        "type":"closed_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_7",
+        "type":"closed_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_8",
+        "type":"closed_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_9",
+        "type":"closed_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_10",
+        "type":"closed_loop:",
+        "y_offset": -0.05,
+        "perch_succesfull": false
+    },
+
+    {
+        "test_name": "test_tactile_11",
+        "type":"closed_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_12",
+        "type":"closed_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": false
+    },
+    {
+        "test_name": "test_tactile_13",
+        "type":"closed_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_14",
+        "type":"closed_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": true
+    },
+    {
+        "test_name": "test_tactile_15",
+        "type":"closed_loop:",
+        "y_offset": -0.1,
+        "perch_succesfull": false
+    }
+]

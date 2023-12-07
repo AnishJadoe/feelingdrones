@@ -1,12 +1,21 @@
 
+from matplotlib import font_manager
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
 import pandas as pd
 import json
+# Specify the font file path
+font_path = '/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf'
 
-with open ('mock_logger.json','r') as f:
+# Register the font
+font_manager.fontManager.addfont(font_path)
+
+plt.rcParams['font.size'] = 10
+plt.rcParams['font.family'] = 'Times New Roman'
+
+with open ('offset.json','r') as f:
     json_data = json.load(f)
     
     
@@ -18,7 +27,7 @@ closed_loop_data = [entry for entry in json_data if entry['type'] == 'closed_loo
 def calculate_probability(data):
     return np.mean([entry['perch_succesfull'] for entry in data])
 
-y_offsets = [0,-0.1,-0.2]
+y_offsets = [0,-0.05,-0.1]
 # Create figure and axis
 fig, ax = plt.subplots(1,2)
 # Plot open loop data
@@ -50,11 +59,11 @@ for i in range(2):
     ax[i].set_xlabel('Y Offset [m]')
     ax[i].set_ylabel('X [m]')
     ax[i].set_title(f'{perching_naming[i]} Perching \n Probability (Top View)')
-    ax[i].set_xlim((-1,1))
-    ax[i].set_ylim((-0.5,0.5))
-    ax[i].legend(fontsize=6)
+    ax[i].set_xlim((-0.5,0.5))
+    ax[i].set_ylim((-0.2,0.2))
+    ax[i].legend()
 
 # Show the plot
-#plt.show()
+plt.show()
 fig.tight_layout()
-plt.savefig('/home/anish/Documents/Thesis/Plots/offset_plot.png', format='png',dpi=2000)
+#plt.savefig('/home/anish/Documents/Thesis/Plots/offset_plot.png', format='png',dpi=2000)

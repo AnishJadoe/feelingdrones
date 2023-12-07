@@ -33,9 +33,9 @@ for pathstr in [
 
 register_types(add_types)
 
-test_name = 'test_tactile_9'
+test_name = 'test_tactile_10'
 # File path to rosbag
-path =f'/home/anish/Documents/Thesis/Drone/ros2_bag_files/28_11/{test_name}'
+path =f'/home/anish/Documents/Thesis/Drone/ros2_bag_files/offset_0/{test_name}'
 
 # Topics to collect data from
 topics=['/rosout']

@@ -77,7 +77,11 @@ FeelyDrone::FeelyDrone()
     this->_ref_yaw = 0.0;
     this->_est_pos = {0.0,0.0,0.0};
     this->_goal_norm = EPSILON_TOUCH;
+    this->_y_offset_bar = 0.0;
     RCLCPP_INFO(this->get_logger(), "NORM IS: %f", this->_goal_norm);
+    RCLCPP_INFO(this->get_logger(), "OFFSET IS: %f cm", this->_y_offset_bar);
+    this->_change_state(States::HOVER);
+
 
  
 
@@ -101,6 +105,8 @@ std::string FeelyDrone:: stateToString(States state) const{
             return "EVALUATE";
         case States::SEARCHING:
             return "SEARCHING";
+        case States::LAND:
+            return "LAND";
         default:
             return "UNKNOWN"; // Handle invalid states gracefully
     }
@@ -115,7 +121,6 @@ void FeelyDrone::_change_state(States new_state)
 /* Callback Functions */
 void FeelyDrone::_timer_callback()
 {
-    
     if (_offboard_setpoint_counter == 50) 
     {
         // /* On the real system we want to arm and change mode using the remote control
@@ -125,60 +130,61 @@ void FeelyDrone::_timer_callback()
         // this->_publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
         // RCLCPP_INFO(this->get_logger(), "SIM IS RUNNING");
         // // // Arm the vehicle
-        this->_change_state(States::HOVER);
     }
 
-    // offboard_control_mode needs to be paired with trajectory_setpoint
-
-    if (this->_current_state == States::HOVER){
-        this->_hover_event_handler();
-    }
-
-    if (this->_current_state == States::SEARCHING){
-        this->_elipse_searching_event_handler();
-    }
-
-    if (this->_current_state == States::TOUCHED){
-        this->_touch_event_handler();
-    }
-
-    if (this->_current_state == States::GRASP){
-        this->_grasp_event_handler();
-    }
-
-    if (this->_current_state == States::EVALUATE){
-        this->_evaluate_event_handler();
-    }
-
-if (this->_current_state == States::LAND){
-        this->_land_event_handler();
-        return;
-    }
-
-
-    this->_publish_offboard_control_mode();
     this->_publish_drone_state();
     this->_publish_tactile_state();
-    this->_publish_trajectory_setpoint();
+    this->_tactile_state_machine();
+
+    if(this->_current_state != States::LAND)
+    {
+        this->_publish_offboard_control_mode();
+        this->_publish_trajectory_setpoint();
+    }
 
     // stop the counter after reaching 10
     if (_offboard_setpoint_counter < 51) {
         _offboard_setpoint_counter++;
     }
-
 }
 
-Eigen::Vector3d FeelyDrone::_setpoint_generator(float t_trajectory){
-    double velocity = 0.1;
-    Eigen::Vector3d trajectory_setpoint = this->_est_pos + t_trajectory * (this->_est_pos - _goal_pos) * velocity;
-    return trajectory_setpoint;
+void FeelyDrone::_tactile_state_machine(){
+    if (this->_current_state == States::HOVER){
+        this->_hover_event_handler();
+        return;
+    }
+
+    if (this->_current_state == States::SEARCHING){
+        this->_zigzag_searching_event_handler();
+        return;
+    }
+
+    if (this->_current_state == States::TOUCHED){
+        this->_touch_event_handler();
+        return;
+    }
+
+    if (this->_current_state == States::GRASP){
+        this->_grasp_event_handler();
+        return;
+    }
+
+    if (this->_current_state == States::EVALUATE){
+        this->_evaluate_event_handler();
+        return;
+    }
+
+    if (this->_current_state == States::LAND){
+        this->_land_event_handler();
+        return;
+    }
 }
 
 void FeelyDrone::_hover_event_handler()
 {
     double t = (this->now() - this->_beginning).seconds();
     Eigen::Vector3d start_pos = {0,0,-0.8};
-    if (t >= 8 && t < 20 && !this->_landed){
+    if (t >= 6 && t < 20 && !this->_landed){
         this->_ref_pos = start_pos;
     }
     if (t >= 12 && !this->_landed && this->_gripper_state != OPEN){
@@ -188,11 +194,9 @@ void FeelyDrone::_hover_event_handler()
         return;
     }
 
-
-
     if (t > 20 && !this->_landed){
         float t_hover = t - 20;
-        float velocity = 0.15;
+        float velocity = 0.2;
         this->_goal_pos = {this->_obj_pos.x(), this->_obj_pos.y(), this->_obj_pos.z()};
         float norm = (this->_est_pos - this->_goal_pos).norm();
         bool at_pos = norm < EPSILON_SEARCH;
@@ -212,113 +216,12 @@ void FeelyDrone::_hover_event_handler()
     }
     return;
 }
-void FeelyDrone::_publish_drone_state(){
-        custom_msgs::msg::StampedInt8 msg{};
-        msg.timestamp = this->get_timestamp();
-        msg.data = (int) this->_current_state; 
-        this->_drone_state_publisher->publish(msg);
-        }
-
-void FeelyDrone::_publish_tactile_state(){
-        custom_msgs::msg::StampedInt32MultiArray msg{};
-   
-        msg.timestamp = this->get_timestamp();
-        std::vector<int> v(std::begin(this->_touched_state), std::end(this->_touched_state));
-        msg.data = v;
-        this->_touched_state_publisher->publish(msg);
-}
-
-void FeelyDrone::_rect_searching_event_handler(){
-    double t = (this->now() - this->_beginning).seconds();
-    float t_trajectory = t - this->_t_search;
-    double period = 36;    
-    float trajectory_step = 0.1;
-    float height_step = 0.1;
-    // Define bounds for search trajectory 
-    float x_max = this->_obj_pos.x() + 0.03;
-    float x_min = this->_obj_pos.x() - 0.03;
-    float y_max = this->_obj_pos.y() + 0.03;
-    float y_min = this->_obj_pos.y() - 0.03;
-
-
-
-    // ROUGH, See if this can be refactored 
-    this->_goal_pos.z() = this->_obj_pos.z() + 0.2 - height_step*_period_counter;
-
-    if (t_trajectory >= (0 + period * this->_period_counter) && t_trajectory < (3 + period * this->_period_counter)) {
-        this->_goal_pos.x() = x_min;
-        this->_goal_pos.y() = y_min;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-    if (t_trajectory>= (3 + period * this->_period_counter) && t_trajectory < (6 + period * this->_period_counter)) {
-        this->_goal_pos.x() = x_min + trajectory_step;
-        this->_goal_pos.y() = y_min;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-    if (t_trajectory >= (6 + period * this->_period_counter) && t_trajectory < (9+ period * this->_period_counter)) {
-        this->_goal_pos.x() = x_min + trajectory_step;
-        this->_goal_pos.y() = y_max;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-
-    if (t_trajectory >= (9 + period * this->_period_counter) && t_trajectory < (12+ period * this->_period_counter)) {
-        this->_goal_pos.x() = x_min + trajectory_step * 2;
-        this->_goal_pos.y() = y_max;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-    if (t_trajectory >= (12 + period * this->_period_counter) && t_trajectory < (15+ period * this->_period_counter)) {
-        this->_goal_pos.x() = x_min + trajectory_step * 2;
-        this->_goal_pos.y() = y_min;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-    if (t_trajectory >= (15 + period * this->_period_counter) && t_trajectory < (18 + period * this->_period_counter)) {
-        this->_goal_pos.x() = x_min + trajectory_step * 3;
-        this->_goal_pos.y() = y_min;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-
-        if (t_trajectory >= (18 + period * this->_period_counter) && t_trajectory < (21 + period * this->_period_counter)) {
-        this->_goal_pos.x() = x_max;
-        this->_goal_pos.y() = y_max;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-    if (t_trajectory>= (21 + period * this->_period_counter) && t_trajectory < (24 + period * this->_period_counter)) {
-        this->_goal_pos.x() = x_max - trajectory_step;
-        this->_goal_pos.y() = y_max;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-    if (t_trajectory >= (24 + period * this->_period_counter) && t_trajectory < (27 + period * this->_period_counter)) {
-        this->_goal_pos.x() = x_max - trajectory_step;
-        this->_goal_pos.y() = y_min;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-
-    if (t_trajectory >= (27 + period * this->_period_counter) && t_trajectory < (30+ period * this->_period_counter)) {
-        this->_goal_pos.x() = x_max - trajectory_step * 2;
-        this->_goal_pos.y() = y_min;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-    if (t_trajectory >= (30 + period * this->_period_counter) && t_trajectory < (33 + period * this->_period_counter)) {
-        this->_goal_pos.x() = x_max - trajectory_step * 3;
-        this->_goal_pos.y() = y_min;
-        std::cout << "Sending setpoint " << "x: " << this->_goal_pos.x() << " y :" << this->_goal_pos.y() << std::endl;
-    }
-    if (t_trajectory >= (33 + period * this->_period_counter) && t_trajectory < (36+ period * this->_period_counter)) {
-        _period_counter++;
-    }
-
-    this->_ref_pos = this->_goal_pos;
-
-
-    return;
-
-}
 
 void FeelyDrone::_elipse_searching_event_handler(){
     double t = (this->now() - this->_beginning).seconds();
     float t_trajectory = t - this->_t_search;
-    double period = 6;    
-    float height_step = -0.03;
+    double period = 5;    
+    float height_step = -0.05;
     // Define bounds for search trajectory 
     float x_amplitude = 0.05;
     float y_amplitude = 0.10;
@@ -332,7 +235,8 @@ void FeelyDrone::_elipse_searching_event_handler(){
 
     Eigen::Vector3d center_search = {this->_obj_pos.x(), this->_obj_pos.y(), this->_obj_pos.z()};
     Eigen::Vector3d offset = {x_offset,y_offset,z_offset};
-    this->_ref_pos = center_search + offset;
+    Eigen::Vector3d new_pos = center_search + offset;
+    this->_ref_pos = new_pos;
     // Update period counter
     this->_period_counter = (int) t_trajectory / period;
 
@@ -346,8 +250,7 @@ void FeelyDrone::_elipse_searching_event_handler(){
 void FeelyDrone::_zigzag_searching_event_handler(){
     double t = (this->now() - this->_beginning).seconds();
     float t_trajectory = t - this->_t_search;
-    double period = 10;    
-    float trajectory_step = 0.1;
+    double period = 5;    
     float height_step = -0.05;
     // Define bounds for search trajectory 
     float x_amplitude = 0.05;
@@ -392,19 +295,19 @@ void FeelyDrone::_touch_event_handler()
 
     // Top Phalange
     if (this->_touched_state[TOP_PHALANGE_1] == TOUCHED){
-        this->_goal_pos = {this->_touch_pos.x() + phal_x, this->_touch_pos.y() + top_phal_y, this->_touch_pos.z() + base_z};  
+        this->_goal_pos = {this->_touch_pos.x() + phal_x, this->_touch_pos.y() - top_phal_y, this->_touch_pos.z() + base_z};  
         _position_set = true;
     }
 
 
     if (this->_touched_state[TOP_PHALANGE_2] == TOUCHED){
-        this->_goal_pos = {this->_touch_pos.x(), this->_touch_pos.y() - top_phal_y, this->_touch_pos.z() + base_z}; 
+        this->_goal_pos = {this->_touch_pos.x(), this->_touch_pos.y() + top_phal_y, this->_touch_pos.z() + base_z}; 
         _position_set = true; 
     }
 
 
     if (this->_touched_state[TOP_PHALANGE_3] == TOUCHED){
-        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() + top_phal_y, this->_touch_pos.z() + base_z}; 
+        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() - top_phal_y, this->_touch_pos.z() + base_z}; 
         _position_set = true; 
     }
 
@@ -412,19 +315,19 @@ void FeelyDrone::_touch_event_handler()
 
     if (this->_touched_state[MID_PHALANGE_1] == TOUCHED)
     {
-        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() + mid_phal_y, this->_touch_pos.z() + base_z};  
+        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() - mid_phal_y, this->_touch_pos.z() + base_z};  
         _position_set = true;
     }
 
 
     if (this->_touched_state[MID_PHALANGE_2] == TOUCHED){
-        this->_goal_pos = {this->_touch_pos.x(), this->_touch_pos.y() - mid_phal_y, this->_touch_pos.z() + base_z};  
+        this->_goal_pos = {this->_touch_pos.x(), this->_touch_pos.y() + mid_phal_y, this->_touch_pos.z() + base_z};  
         _position_set = true;
     }  
 
 
     if (this->_touched_state[MID_PHALANGE_3] == TOUCHED){
-        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() + mid_phal_y, this->_touch_pos.z() + base_z}; 
+        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() - mid_phal_y, this->_touch_pos.z() + base_z}; 
         _position_set = true; 
 
     }
@@ -432,20 +335,20 @@ void FeelyDrone::_touch_event_handler()
     // Bottom Phalange
 
     if (this->_touched_state[BOT_PHALANGE_1] == TOUCHED){
-        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() + bot_phal_y, this->_touch_pos.z() + base_z};  
+        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() - bot_phal_y, this->_touch_pos.z() + base_z};  
         _position_set = true;
         
     }
 
 
     if (this->_touched_state[BOT_PHALANGE_2] == TOUCHED){
-        this->_goal_pos = {this->_touch_pos.x(), this->_touch_pos.y() - bot_phal_y, this->_touch_pos.z() + base_z};  
+        this->_goal_pos = {this->_touch_pos.x(), this->_touch_pos.y() + bot_phal_y, this->_touch_pos.z() + base_z};  
         _position_set = true;
     }
 
 
     if (this->_touched_state[BOT_PHALANGE_3] == TOUCHED){
-        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() + bot_phal_y, this->_touch_pos.z() + base_z};  
+        this->_goal_pos = {this->_touch_pos.x() - phal_x, this->_touch_pos.y() - bot_phal_y, this->_touch_pos.z() + base_z};  
         _position_set = true;
     }
 
@@ -477,27 +380,18 @@ void FeelyDrone::_touch_event_handler()
 
 void FeelyDrone::_grasp_event_handler(){
 
-    float norm = (this->_est_pos - this->_ref_pos).norm();
 
-    if (this->_gripper_state != OPEN){        
-        this->_ref_pos.z() = this->_goal_pos.z() + 0.15;
-        std_msgs::msg::Int8 msg{};
-        msg.data = OPEN; 
-        this->_gripper_publisher->publish(msg);
-        return;        
-    }
-
-    else{
+    if(this->_gripper_state == OPEN){    
+        float norm = (this->_est_pos - this->_ref_pos).norm();
         this->_ref_pos.z() = this->_goal_pos.z();
         if ( norm <= this->_goal_norm)
             {
+                RCLCPP_INFO(this->get_logger(), "GRASPING, NORM EQUALS: %f", norm );
                 std_msgs::msg::Int8 msg{};
                 msg.data = CLOSED; 
-                RCLCPP_INFO(this->get_logger(), "GRASPING, NORM EQUALS: %f", norm );
                 this->_gripper_publisher->publish(msg);
                 this->_t_evaluate = (this->now() - this->_beginning).seconds();
                 this->_change_state(States::EVALUATE);
-        
                 return;
             }
         else{
@@ -506,13 +400,22 @@ void FeelyDrone::_grasp_event_handler(){
         }
     }
 
+    if (this->_gripper_state != OPEN){        
+        RCLCPP_INFO(this->get_logger(), "OPENING FINGERS" );
+        this->_ref_pos.z() = this->_goal_pos.z() + 0.15;
+        std_msgs::msg::Int8 msg{};
+        msg.data = OPEN; 
+        this->_gripper_publisher->publish(msg);
+        return;        
+    }
+
 }
 
 void FeelyDrone::_evaluate_event_handler(){
     float t = (this->now() - this->_beginning).seconds();
     float t_evaluating = t - this->_t_evaluate;
 
-    if (t_evaluating >= 1){
+    if (this->_gripper_state == CLOSED){
         RCLCPP_INFO(this->get_logger(), "Got tactile state:" );
         for (int i =0; i <12; ++i){
                 RCLCPP_INFO(this->get_logger(), "%d",this->_touched_state[i]);
@@ -522,15 +425,21 @@ void FeelyDrone::_evaluate_event_handler(){
         int8_t state_finger_2  = this->_touched_state[BOT_PHALANGE_2] + this->_touched_state[MID_PHALANGE_2] + this->_touched_state[TOP_PHALANGE_2];
         int8_t state_finger_3  = this->_touched_state[BOT_PHALANGE_3] + this->_touched_state[MID_PHALANGE_3] + this->_touched_state[TOP_PHALANGE_3];
 
-        bool stable_grasp = (state_finger_1 >= 1) && (state_finger_2 >= 1) && (state_finger_3 >= 1);
+        int8_t state_bottom_phalanges = this->_touched_state[BOT_PHALANGE_1] + this->_touched_state[BOT_PHALANGE_2] +  this->_touched_state[BOT_PHALANGE_3];
+        int8_t state_mid_phalanges = this->_touched_state[MID_PHALANGE_1] + this->_touched_state[MID_PHALANGE_2] + this->_touched_state[MID_PHALANGE_3];
+
+        bool closed_finger = (state_finger_1 >= 1) && (state_finger_2 >= 1) && (state_finger_3 >= 1) & (state_bottom_phalanges >=1 || state_mid_phalanges >= 1);
+        // bool stable_grasp = (state_finger_1 >= 1) && (state_finger_2 >= 1) && (state_finger_3 >= 1);
+        bool stable_grasp = (state_bottom_phalanges == 3) || (state_mid_phalanges == 3) || closed_finger ;
         bool go_left = (state_finger_3 < 1) && (state_finger_1 >=1) && (state_finger_2 >= 1);
         bool go_up = (state_finger_3 < 1) && (state_finger_1 < 1) && (state_finger_2 < 1);
         bool try_again = !stable_grasp || !go_left || !go_up;
 
-
+     
         if(stable_grasp){
             RCLCPP_INFO(this->get_logger(), "SUCCES" );
             this->_t_land = (this->now() - this->_beginning).seconds();
+            this->_grasp_counter += 1; 
             this->_change_state(States::LAND);
             return;
         }
@@ -539,6 +448,7 @@ void FeelyDrone::_evaluate_event_handler(){
             this->_goal_norm = EPSILON_REFINE;
             this->_goal_pos.z() = this->_goal_pos.z() - 0.05;
             RCLCPP_INFO(this->get_logger(), "GOING UP, NORM IS: %f", this->_goal_norm );
+            this->_grasp_counter += 1; 
             this->_change_state(States::GRASP);
             return;
 
@@ -549,6 +459,7 @@ void FeelyDrone::_evaluate_event_handler(){
             this->_goal_norm = EPSILON_REFINE;
             this->_goal_pos.x() = this->_goal_pos.x() - 0.05;
             RCLCPP_INFO(this->get_logger(), "GOING LEFT, NORM IS: %f", this->_goal_norm  );
+            this->_grasp_counter += 1; 
             this->_change_state(States::GRASP);
             return;
 
@@ -558,23 +469,43 @@ void FeelyDrone::_evaluate_event_handler(){
         {
             this->_goal_norm = EPSILON_REFINE;
             RCLCPP_INFO(this->get_logger(), "TRYING AGAIN NORM IS: %f", this->_goal_norm );
+            this->_grasp_counter += 1; 
             this->_change_state(States::GRASP);
             return;
 
         }
-
+        
     }
     else{
-        // RCLCPP_INFO(this->get_logger(), "EVALUATING CURRENT GRASP");
-        return;
-    }
+        std_msgs::msg::Int8 msg{};
+        msg.data = CLOSED; 
+        this->_gripper_publisher->publish(msg);
+        RCLCPP_INFO(this->get_logger(), "Waiting for grippers to close, still %d", this->_gripper_state);
+        }
 }
 
 void FeelyDrone::_land_event_handler(){
     RCLCPP_INFO(this->get_logger(), "LANDING" );
+    RCLCPP_INFO(this->get_logger(), "Grasping took %d trie(s)", this->_grasp_counter);
     double t = (this->now() - this->_beginning).seconds();
     double t_landing = t - this->_t_land;
     this->land();
+}
+
+void FeelyDrone::_publish_drone_state(){
+        custom_msgs::msg::StampedInt8 msg{};
+        msg.timestamp = this->get_timestamp();
+        msg.data = (int) this->_current_state; 
+        this->_drone_state_publisher->publish(msg);
+        }
+
+void FeelyDrone::_publish_tactile_state(){
+        custom_msgs::msg::StampedInt32MultiArray msg{};
+   
+        msg.timestamp = this->get_timestamp();
+        std::vector<int> v(std::begin(this->_touched_state), std::end(this->_touched_state));
+        msg.data = v;
+        this->_touched_state_publisher->publish(msg);
 }
 
 void FeelyDrone::_publish_trajectory_setpoint()
@@ -593,7 +524,7 @@ void FeelyDrone::_publish_trajectory_setpoint()
     px4_msgs::msg::TrajectorySetpoint msg{};
     msg.position = {(float) _ref_pos.x(),
                     (float) _ref_pos.y(),
-                    (float) _ref_pos.z()};
+                    std::max((float) _ref_pos.z(), this->_bar_height)};
     msg.yaw = this->_ref_yaw; // [-PI:PI]
     msg.timestamp = this->get_timestamp();
     this->_trajectory_publisher->publish(msg);
@@ -649,7 +580,7 @@ void FeelyDrone::_tactile_callback(const custom_msgs::msg::StampedInt32MultiArra
         }
         return;
     }
-    int SENSOR_THRESHOLD = -8;
+    int SENSOR_THRESHOLD = -15;
     // Preprocessor, should be different function
     if (msg->data.size() == 12){
         for (int i = 0; i < 12; ++i){
@@ -688,7 +619,7 @@ void FeelyDrone::_tactile_callback(const custom_msgs::msg::StampedInt32MultiArra
         }
         } 
 
-    if (this->_current_state == States::EVALUATE){
+    if (this->_current_state == States::EVALUATE && this->_gripper_state != CLOSED){
         for (int i = 0; i < 12; ++i) {
             this->_touched_state[i] = this->_tactile_state[i];
             }
@@ -709,13 +640,13 @@ void FeelyDrone::_reference_callback(const geometry_msgs::msg::PoseStamped::Shar
     // transform to px4 (ned) frame
     position = px4_ros_com::frame_transforms::enu_to_ned_local_frame(position);
     float x_offset = 0.0;
-    float y_offset = 0.0;
-    float z_offset = 0.35;
+    float z_offset = 0.30;
 
 
     this->_obj_pos.x() = position.x() + x_offset;
-    this->_obj_pos.y() = position.y() + y_offset;
+    this->_obj_pos.y() = position.y() + this->_y_offset_bar;
     this->_obj_pos.z() = position.z() + z_offset;
+    this->_bar_height = position.z();
 
     // RCLCPP_INFO(this->get_logger(), "MOCKING POSITION");
     // this->_obj_pos.x() = 0;
