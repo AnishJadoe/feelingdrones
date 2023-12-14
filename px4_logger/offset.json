@@ -64,32 +64,32 @@
     {
         "test_name": "test_tactile_11",
         "type":"open_loop:",
-        "y_offset": -0.1,
+        "y_offset": -0.14,
         "perch_succesfull": false
     },
     {
         "test_name": "test_tactile_12",
         "type":"open_loop:",
-        "y_offset": -0.1,
+        "y_offset": -0.14,
         "perch_succesfull": false
     },
     {
         "test_name": "test_tactile_13",
         "type":"open_loop:",
-        "y_offset": -0.1,
+        "y_offset": -0.14,
         "perch_succesfull": false
     },
     {
         "test_name": "test_tactile_14",
         "type":"open_loop:",
-        "y_offset": -0.1,
+        "y_offset": -0.14,
         "perch_succesfull": false
     },
     {
         "test_name": "test_tactile_15",
         "type":"open_loop:",
-        "y_offset": -0.1,
-        "perch_succesfull": false
+        "y_offset": -0.14,
+        "perch_succesfull": true
     },
 
 
@@ -147,7 +147,7 @@
         "test_name": "test_tactile_9",
         "type":"closed_loop:",
         "y_offset": -0.05,
-        "perch_succesfull": false
+        "perch_succesfull": true
     },
     {
         "test_name": "test_tactile_10",
@@ -159,31 +159,31 @@
     {
         "test_name": "test_tactile_11",
         "type":"closed_loop:",
-        "y_offset": -0.1,
-        "perch_succesfull": false
+        "y_offset": -0.14,
+        "perch_succesfull": true
     },
     {
         "test_name": "test_tactile_12",
         "type":"closed_loop:",
-        "y_offset": -0.1,
+        "y_offset": -0.14,
         "perch_succesfull": false
     },
     {
         "test_name": "test_tactile_13",
         "type":"closed_loop:",
-        "y_offset": -0.1,
+        "y_offset": -0.14,
         "perch_succesfull": true
     },
     {
         "test_name": "test_tactile_14",
         "type":"closed_loop:",
-        "y_offset": -0.1,
+        "y_offset": -0.14,
         "perch_succesfull": true
     },
     {
         "test_name": "test_tactile_15",
         "type":"closed_loop:",
-        "y_offset": -0.1,
+        "y_offset": -0.14,
         "perch_succesfull": false
     }
 ]

@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
+from common import getImage
 from constants import *
 from data_loader import get_data_dict
 
@@ -19,8 +20,7 @@ font_manager.fontManager.addfont(font_path)
 plt.rcParams['font.size'] = 10
 plt.rcParams['font.family'] = 'Times New Roman'
 
-def getImage(path):
-   return OffsetImage(plt.imread(path, format="png"), zoom=0.07)
+
 
 
 def plot_2D_endpoints(ax, df, translation):
@@ -60,7 +60,7 @@ def plot_2D_trajectory(ax, df, translation):
 
 # File path to rosbag
 HOME = '/home/anish/Documents/Thesis/Drone/ros2_bag_files/'
-folder_paths = ['offset_0','offset_05', 'spider_plot', '28_11','27_11', 'closed_loop_tactile_6_12', 'closed_loop_tactile_7_12']
+folder_paths = ['offset_0','offset_05', 'spider_plot', '28_11','27_11', 'closed_loop_tactile_6_12', 'closed_loop_tactile_7_12', 'zigzag_7_12']
 
 
 fig,ax = plt.subplots(figsize=(10,6))
@@ -102,7 +102,7 @@ for folder_path in folder_paths:
             ) \
             and not (sum(landing_tactile_state) > 9) # every sensor on
         
-        t_start = min(time_touched)
+        t_start = max(time_searching)
         t_end = max(time_evaluating)
         df_mocap = df_mocap.loc[t_start:t_end]
         if stable_grasp:
@@ -113,8 +113,8 @@ for folder_path in folder_paths:
 
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')
-ax.set_ylim(-0.2,0.2)
-ax.set_xlim(-0.6,0.6)
+ax.set_ylim(-0.15,0.15)
+ax.set_xlim(-0.2,0.45)
 
 ax.hlines(0.14,-1,1,label='Length top phalange', color='red', linewidth=0.3)
 ax.hlines(-0.14,-1,1, color='red', linewidth=0.3)
@@ -130,7 +130,7 @@ ax.hlines(-0.04,-1,1, colors='green', linewidth=0.3)
 # legend_handles = [Patch(color=color, label=label) for label,color in color_mappnig_matrix.items()]
 
 # Plot the axis line representing the object
-ax.legend(loc='upper left')
+ax.legend(loc='lower right')
 #plt.show()
 print(f"Made spider plot for {n_plots} experiments")
-plt.savefig('/home/anish/Documents/Thesis/Plots/spider_plot.png', format='png',dpi=600)
+plt.savefig('/home/anish/Documents/Thesis/Plots/spider_plot.png',bbox_inches='tight', format='png',dpi=600)

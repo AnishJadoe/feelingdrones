@@ -13,8 +13,10 @@ font_path = '/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf'
 # Register the font
 font_manager.fontManager.addfont(font_path)
 
-plt.rcParams['font.size'] = 10
+plt.rcParams['font.size'] = 35
 plt.rcParams['font.family'] = 'Times New Roman'
+fig_size = (20,10)
+dpi = 250
 
 def get_tries(df):
     # Initialize variables
@@ -36,8 +38,11 @@ def get_tries(df):
         
     return grasp_attempts
 
-def get_aggregates(folder_paths,n_max=8):
+def get_aggregates(folder_paths,name,n_max=8):
+    print(f"Getting aggregates for {name}")
     n_plots = 0
+    n_succes = 0
+    n_fail = 0
     time_before_land = []
     tries_before_land = []
     for folder_path in folder_paths:
@@ -65,29 +70,36 @@ def get_aggregates(folder_paths,n_max=8):
                 and not (sum(landing_tactile_state) > 9)) or not time_landing.empty  # every sensor on
             
             if stable_grasp:
-                print(f"Checking {path} ")
+                print(f"{path} SUCCES ")
                 t_start = min(time_touched)
                 t_end = max(time_evaluating)
                 time_before_land.append(t_end-t_start)
                 tries_before_land.append(get_tries(df_command))
                 n_plots += 1
+                n_succes += 1
+            else:
+                print(f"{path} FAILED")
+                tries_before_land.append(-1)
+                n_fail += 1
+                # n_plots += 1
                 
-    print(f'Used {n_plots} trials')
+    print(f'Used {n_succes + n_fail} trials')
+    print(f'Found {n_succes} succesfull and {n_fail} failed perches')
         
     return time_before_land,tries_before_land
     
 # File path to rosbag
 HOME = '/home/anish/Documents/Thesis/Drone/ros2_bag_files/'
-elipse_paths = ['closed_loop_tactile_6_12', 'closed_loop_tactile_7_12', 'offset_0']
+elipse_paths = ['closed_loop_tactile_6_12', 'closed_loop_tactile_7_12']
 zigzag_paths =  ['zigzag_7_12']
 #folder_paths = ['closed_loop_tactile_7_12']
 searching_trajectories = ['Elipse searching trajectory', 'Zigzag searching trajectory']
 
 
-fig,ax = plt.subplots(figsize=(10, 6))
+fig,ax = plt.subplots(figsize=fig_size)
 
-elipse_aggrigate_time,elipse_paths_aggrigate_tries = get_aggregates(folder_paths=elipse_paths,n_max=10)
-zigzag_aggrigate_time,zigzag_paths_aggrigate_tries = get_aggregates(folder_paths=zigzag_paths,n_max=10)
+elipse_aggrigate_time,elipse_paths_aggrigate_tries = get_aggregates(folder_paths=elipse_paths,n_max=10, name=searching_trajectories[0])
+zigzag_aggrigate_time,zigzag_paths_aggrigate_tries = get_aggregates(folder_paths=zigzag_paths,n_max=10, name=searching_trajectories[0])
 
 # Count the occurrences of each value
 elipse_value_counts = Counter(elipse_paths_aggrigate_tries)
@@ -113,14 +125,14 @@ ax.bar(elipse_values, elipse_relative_frequencies,width=width, color='skyblue',e
 ax.bar(zigzag_values , zigzag_relative_frequencies,width=width, color='salmon',edgecolor='black', alpha=0.7, label=searching_trajectories[1])
 ax.set_xlabel('Number of Tries')
 ax.set_ylabel('Probability')
-ax.vlines(np.mean(elipse_values), 0, 1,color='blue', label='Mean tries elipse trajectory')
-ax.vlines(np.mean(zigzag_values), 0, 1,color='orange', label='Mean tries zigzag trajectory')
-ax.set_ylim(0, 1)  # Set y-axis limit to be between 0 and 1
+ax.vlines(np.mean(elipse_values), 0, 1,color='blue',linestyles='--', label='Mean tries elipse trajectory')
+ax.vlines(np.mean(zigzag_values), 0, 1,color='orange',linestyles='--', label='Mean tries zigzag trajectory')
+ax.set_ylim(0, 0.5)  # Set y-axis limit to be between 0 and 1
 ax.grid(axis='y', linestyle='--', alpha=0.7)
 ax.legend(loc='upper right')
 
 # # Show the plot
-plt.savefig('/home/anish/Documents/Thesis/Plots/grasp_tries_plot.png', format='png',dpi=600)
+plt.savefig('/home/anish/Documents/Thesis/Plots/grasp_tries_plot.png', bbox_inches='tight', format='png',dpi=600)
 
 
 fig,ax = plt.subplots(figsize=(10, 6))
@@ -128,14 +140,20 @@ fig,ax = plt.subplots(figsize=(10, 6))
 # Plotting the distribution using matplotlib
 ax.hist(elipse_aggrigate_time, 5, color='skyblue',edgecolor='black', alpha=0.7, label=searching_trajectories[0])
 ax.hist(zigzag_aggrigate_time, 5, color='salmon',edgecolor='black', alpha=0.7, label=searching_trajectories[1])
-ax.vlines(np.mean(elipse_aggrigate_time), 0, 8,color='blue', label='Mean time elipse trajectory')
-ax.vlines(np.mean(zigzag_aggrigate_time), 0, 8,color='orange', label='Mean time zigzag trajectory')
+ax.vlines(np.mean(elipse_aggrigate_time), 0, 9,linestyles='--', color='blue', label='Mean time elipse trajectory')
+ax.vlines(np.mean(zigzag_aggrigate_time), 0, 9,linestyles='--',color='orange', label='Mean time zigzag trajectory')
 ax.set_xlabel('Time Before Landing [s]]')
 ax.set_ylabel('Frequency')
 ax.grid(axis='y', linestyle='--', alpha=0.7)
 ax.legend(loc='upper right')
+ax.set_ylim(0,7.5)
 
-plt.savefig('/home/anish/Documents/Thesis/Plots/grasp_time_plot.png', format='png',dpi=600)
+
+
+
+
+
+plt.savefig('/home/anish/Documents/Thesis/Plots/grasp_time_plot.png', bbox_inches='tight', format='png',dpi=600)
 
 
 

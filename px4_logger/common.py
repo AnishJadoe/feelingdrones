@@ -1,3 +1,5 @@
+from matplotlib import pyplot as plt
+from matplotlib.offsetbox import OffsetImage
 from constants import *
 def get_trajectories(df,trajectories, trajectory_start):
     
@@ -18,3 +20,6 @@ def get_trajectories(df,trajectories, trajectory_start):
     trajectories = get_trajectories(df_trajectory, trajectories, current_timestamp)
     
     return trajectories
+
+def getImage(path,zoom=0.07):
+   return OffsetImage(plt.imread(path, format="png"), zoom=zoom)
