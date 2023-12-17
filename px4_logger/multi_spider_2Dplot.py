@@ -1,7 +1,9 @@
+import pickle
 from matplotlib import font_manager
 from matplotlib.markers import MarkerStyle
 from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 from matplotlib.patches import Patch
+from matplotlib.scale import scale_factory
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -17,12 +19,74 @@ font_path = '/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf'
 # Register the font
 font_manager.fontManager.addfont(font_path)
 
-plt.rcParams['font.size'] = 10
+plt.rcParams['font.size'] = 35
 plt.rcParams['font.family'] = 'Times New Roman'
+fig_size = (20,10)
+dpi = 250
 
 
+# Your function to generate or load the nested dictionary
+def generate_or_load_dictionary(folder_paths,object_center):
+    # Check if the dictionary is already cached
+    try:
+        with open('cached_dictionary_spider.pkl', 'rb') as file:
+            my_dict = pickle.load(file)
+        print("Dictionary loaded from cache.")
+    except FileNotFoundError:
+        # Generate the dictionary if not cached
+        print("Generating dictionary...")
+        my_dict = get_data(folder_paths,object_center)
 
+        # Save the dictionary to a cache file
+        with open('cached_dictionary_spider.pkl', 'wb') as file:
+            pickle.dump(my_dict, file)
+        print("Dictionary cached.")
 
+    return my_dict
+
+def get_data(folder_paths,object_center):
+    data = {}
+    n_plots = 0
+    for folder_path in folder_paths:
+        for path in os.listdir(HOME+folder_path):
+            data_dict = get_data_dict(f'{HOME+folder_path}/{path}')
+            df_mocap = data_dict[MOCAP]
+            df_bar = data_dict[BAR_POSE]
+            df_command = data_dict[DRONE_STATE]
+            df_sensors = data_dict[TACTILE_DATA]
+
+            time_searching = df_command[(df_command['state'] == SEARCHING)].index
+            time_evaluating = df_command[(df_command['state'] == EVALUATE)].index
+
+            if time_evaluating.empty or df_sensors.empty or time_searching.empty:
+                continue
+            
+            try:
+                df_sensors = df_sensors.mask(df_sensors - df_sensors.iloc[0] <= -15, 1)
+                df_sensors = df_sensors.mask(df_sensors > 1, 0)
+                landing_tactile_state = np.array(df_sensors.loc[max(time_evaluating):].iloc[0])
+            except:
+                continue
+            
+            bar_x = df_bar['x'].iloc[-1]
+            bar_y = df_bar['y'].iloc[-1]
+            translation = np.array([[object_center[0] - bar_x],[object_center[1] - bar_y]])
+            stable_grasp = (
+                (sum(landing_tactile_state - np.array([0,1,0,0,1,0,0,1,0,0,0,0])) >= 0) \
+                or (sum(landing_tactile_state - np.array([1,0,0,1,0,0,1,0,0,0,0,0])) >= 0 )
+                ) \
+                and not (sum(landing_tactile_state) > 9) # every sensor on
+            
+            t_start = max(time_searching)
+            t_end = max(time_evaluating)
+            df_mocap = df_mocap.loc[t_start:t_end]
+            if stable_grasp:
+                print(f'Plotting {path}')
+                n_plots += 1
+                data[f'run_{n_plots}'] = [df_mocap,translation]
+    print(f"Made spider plot for {n_plots} experiments")
+    return data
+    
 def plot_2D_endpoints(ax, df, translation):
     # Load your SVG file
     closed_drone_path = '/home/anish/dev/working/feelingdrones/px4_logger/icons/closed_drone.png'
@@ -30,10 +94,10 @@ def plot_2D_endpoints(ax, df, translation):
     
     x = df['x'] + translation[0]
     y = df['y'] + translation[1]
-    ax.plot([x.iloc[0],x.iloc[-1]], [y.iloc[0],y.iloc[-1]], '--',linewidth=0.3, color='tab:purple')
-    ab = AnnotationBbox(getImage(open_drone_path), (x.iloc[0], y.iloc[0]), frameon=False)
+    ax.plot([x.iloc[0],x.iloc[-1]], [y.iloc[0],y.iloc[-1]], '--',linewidth=1, color='tab:purple')
+    ab = AnnotationBbox(getImage(open_drone_path, zoom=0.12), (x.iloc[0], y.iloc[0]), frameon=False)
     ax.add_artist(ab)
-    ab = AnnotationBbox(getImage(closed_drone_path), (x.iloc[-1], y.iloc[-1]), frameon=False)
+    ab = AnnotationBbox(getImage(closed_drone_path,zoom=0.12), (x.iloc[-1], y.iloc[-1]),frameon=False)
     ax.add_artist(ab)
     return ax
 
@@ -63,54 +127,20 @@ HOME = '/home/anish/Documents/Thesis/Drone/ros2_bag_files/'
 folder_paths = ['offset_0','offset_05', 'spider_plot', '28_11','27_11', 'closed_loop_tactile_6_12', 'closed_loop_tactile_7_12', 'zigzag_7_12']
 
 
-fig,ax = plt.subplots(figsize=(10,6))
+fig,ax = plt.subplots(figsize=fig_size)
 bar_x = 0
 bar_y = 0
 object_center = (bar_x,bar_y)
 axis_length = 1  # Adjust the axis length as needed
 ax.plot([object_center[0] - axis_length / 2, object_center[0] + axis_length / 2], [object_center[1], object_center[1]], color='grey', linewidth=5, label='Perching Object')
-n_plots = 0
-for folder_path in folder_paths:
-    for path in os.listdir(HOME+folder_path):
-        data_dict = get_data_dict(f'{HOME+folder_path}/{path}')
-        df_mocap = data_dict[MOCAP]
-        df_bar = data_dict[BAR_POSE]
-        df_command = data_dict[DRONE_STATE]
-        df_sensors = data_dict[TACTILE_DATA]
 
-        time_searching = df_command[(df_command['state'] == SEARCHING)].index
-        time_grasping = df_command[(df_command['state'] == GRASP)].index
-        time_evaluating = df_command[(df_command['state'] == EVALUATE)].index
-        time_touched = df_command[(df_command['state'] == TOUCHED)].index
+data_entries = generate_or_load_dictionary(folder_paths,object_center)
 
-        if time_evaluating.empty or df_sensors.empty or time_searching.empty:
-            continue
-        
-        try:
-            df_sensors = df_sensors.mask(df_sensors - df_sensors.iloc[0] <= -15, 1)
-            df_sensors = df_sensors.mask(df_sensors > 1, 0)
-            landing_tactile_state = np.array(df_sensors.loc[max(time_evaluating):].iloc[0])
-        except:
-            continue
-        
-        bar_x = df_bar['x'].iloc[-1]
-        bar_y = df_bar['y'].iloc[-1]
-        translation = np.array([[object_center[0] - bar_x],[object_center[1] - bar_y]])
-        stable_grasp = (
-            (sum(landing_tactile_state - np.array([0,1,0,0,1,0,0,1,0,0,0,0])) >= 0) \
-            or (sum(landing_tactile_state - np.array([1,0,0,1,0,0,1,0,0,0,0,0])) >= 0 )
-            ) \
-            and not (sum(landing_tactile_state) > 9) # every sensor on
-        
-        t_start = max(time_searching)
-        t_end = max(time_evaluating)
-        df_mocap = df_mocap.loc[t_start:t_end]
-        if stable_grasp:
-            print(f"Plotting {path} ")
-            n_plots += 1
-            plot_2D_endpoints(ax,df_mocap, translation)
-        
-
+for entry in data_entries.values():
+    df_mocap = entry[0]
+    translation = entry[1]
+    plot_2D_endpoints(ax,df_mocap, translation)
+    
 ax.set_xlabel('X [m]')
 ax.set_ylabel('Y [m]')
 ax.set_ylim(-0.15,0.15)
@@ -130,7 +160,7 @@ ax.hlines(-0.04,-1,1, colors='green', linewidth=0.3)
 # legend_handles = [Patch(color=color, label=label) for label,color in color_mappnig_matrix.items()]
 
 # Plot the axis line representing the object
-ax.legend(loc='lower right')
+ax.legend(loc='lower right',fontsize=20)
 #plt.show()
-print(f"Made spider plot for {n_plots} experiments")
-plt.savefig('/home/anish/Documents/Thesis/Plots/spider_plot.png',bbox_inches='tight', format='png',dpi=600)
+
+plt.savefig('/home/anish/Documents/Thesis/Plots/spider_plot.png',bbox_inches='tight', format='png',dpi=dpi)

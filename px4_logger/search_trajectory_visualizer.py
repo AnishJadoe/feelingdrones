@@ -84,8 +84,10 @@ font_path = '/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf'
 # Register the font
 font_manager.fontManager.addfont(font_path)
 
-plt.rcParams['font.size'] = 10
+plt.rcParams['font.size'] = 22
 plt.rcParams['font.family'] = 'Times New Roman'
+fig_size = (20,10)
+dpi = 250
 
 # Plotting the trajectory
 drone = FeelyDrone()
@@ -114,7 +116,7 @@ sm = ScalarMappable(cmap=cmap, norm=norm)
 sm.set_array([])
 
 # Create a single figure with two subplots
-fig, axes = plt.subplots(1, 2, figsize=(10, 8), subplot_kw={'projection': '3d'})
+fig, axes = plt.subplots(1, 2, figsize=(20,10), subplot_kw={'projection': '3d'})
 # Plot the axis line representing the object
 object_center = (drone._obj_pos["x"], drone._obj_pos["y"], drone._obj_pos["z"])
 axis_length = 0.2  # Adjust the axis length as needed
@@ -124,9 +126,9 @@ plot_horizontal_cylinder(axes[1], radius=0.05, height=0.2, center=(object_center
 axes[0].scatter(x_points_ellipse, y_points_ellipse, z_points_ellipse, c=time_points, cmap=cmap, norm=norm, marker='o', s=10, alpha=1, label='Drone Trajectory')
 axes[0].scatter(x_points_ellipse[0], y_points_ellipse[0], z_points_ellipse[0], color='red', label='Starting Point', s=70)
 axes[0].scatter(x_points_ellipse[-1], y_points_ellipse[-1], z_points_ellipse[-1], color='green', label='Ending Point', s=70)
-axes[0].set_xlabel('X [m]')
-axes[0].set_ylabel('Y [m]')
-axes[0].set_zlabel('Z [m]')
+axes[0].set_xlabel('X [m]',labelpad=10)
+axes[0].set_ylabel('Y [m]',labelpad=10)
+axes[0].set_zlabel('Z [m]',labelpad=10)
 # axes[0].plot([object_center[0] - axis_length / 2, object_center[0] + axis_length / 2], [object_center[1], object_center[1]], [object_center[2], object_center[2]], color='blue', label='Object Axis', linewidth=5)
 axes[0].invert_zaxis()
 axes[0].view_init(elev=30, azim=60, roll=0)
@@ -152,9 +154,9 @@ axes[0].set_zticks(z_ticks)
 axes[1].scatter(x_points_zigzag, y_points_zigzag, z_points_zigzag, c=time_points, cmap=cmap, norm=norm, marker='o', s=10, alpha=1, label='Drone Trajectory')
 axes[1].scatter(x_points_zigzag[0], y_points_zigzag[0], z_points_zigzag[0], color='red', label='Starting Point', s=70)
 axes[1].scatter(x_points_zigzag[-1], y_points_zigzag[-1], z_points_zigzag[-1], color='green', label='Ending Point', s=70)
-axes[1].set_xlabel('X [m]')
-axes[1].set_ylabel('Y [m]')
-axes[1].set_zlabel('Z [m]')
+axes[1].set_xlabel('X [m]',labelpad=10)
+axes[1].set_ylabel('Y [m]',labelpad=10)
+axes[1].set_zlabel('Z [m]',labelpad=10)
 # axes[1].plot([object_center[0] - axis_length / 2, object_center[0] + axis_length / 2], [object_center[1], object_center[1]], [object_center[2], object_center[2]], color='blue', label='Object Axis', linewidth=5)
 axes[1].invert_zaxis()
 axes[1].view_init(elev=30, azim=60, roll=0)
@@ -162,6 +164,8 @@ axes[1].set_xticks(x_ticks)
 axes[1].set_yticks(y_ticks)
 axes[1].set_zticks(z_ticks)
 #plt.show()
-axes[0].legend(loc='upper right')
-axes[1].legend(loc='upper right')
-plt.savefig('/home/anish/Documents/Thesis/Plots/trajectories.png',bbox_inches='tight', format='png', dpi=600)
+axes[0].tick_params(axis='z', pad=5)
+axes[1].tick_params(axis='z', pad=5)
+axes[0].legend(loc='upper right', fontsize=20)
+axes[1].legend(loc='upper right', fontsize=20)
+plt.savefig('/home/anish/Documents/Thesis/Plots/trajectories.png',bbox_inches='tight', format='png', dpi=dpi)

@@ -17,8 +17,10 @@ font_path = '/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf'
 # Register the font
 font_manager.fontManager.addfont(font_path)
 
-plt.rcParams['font.size'] = 35
+plt.rcParams['font.size'] = 25
 plt.rcParams['font.family'] = 'Times New Roman'
+fig_size = (20,10)
+dpi = 250
 
 
 
@@ -47,6 +49,21 @@ sensor_name_mapping = {
         11:'EMPTY'
     }
 
+def find_first_touch(sensor_data):
+    min_timestamp = float('inf')
+    min_sensor_id = None
+
+    for sensor_id, timestamps in sensor_data.items():
+        # Check if the sensor has any data
+        if timestamps:
+            # Get the minimum timestamp for the sensor
+            sensor_min_timestamp = min(timestamps, key=lambda x: x[0])[0]
+
+            # Update the minimum timestamp and corresponding sensor id if needed
+            if sensor_min_timestamp < min_timestamp:
+                min_timestamp = sensor_min_timestamp
+                min_sensor_id = sensor_id
+    return (min_sensor_id, min_timestamp)
 # Function to find intervals
 def find_intervals(sensor_data):
     intervals = {}
@@ -74,7 +91,7 @@ def find_intervals(sensor_data):
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/closed_loop_tactile_7_12/test_tactile_1'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/closed_loop_tactile_7_12/test_tactile_3'
 data_dict = get_data_dict(path)
 
 df_ref = data_dict[TRAJECTORY_SETPOINT]
@@ -106,28 +123,37 @@ df_command = df_command.loc[t_start:t_end]
 
 
 axes = ['x','y','z']
-fig,ax = plt.subplots(4,1, figsize=(18, 12), height_ratios=[1,1,1,2])
+fig,ax = plt.subplots(4,1, figsize=fig_size, height_ratios=[1,1,1,2])
 
 
 max_ticks = 4
 for i,axes in enumerate(axes):
-    ax[i].plot(df_ref.index,df_ref[axes], label='Reference position')
+    line1 = ax[i].plot(df_ref.index,df_ref[axes], label='Reference position', linewidth=3)
     # ax[i].plot(df_est.index,df_est[axes], label='estimated odometry')
-    ax[i].plot(df_mocap.index,df_mocap[axes], label='Vehicle odometry')
-    ax[i].hlines(df_bar[axes].iloc[-1],xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='Bar position')
+    line2 = ax[i].plot(df_mocap.index,df_mocap[axes], label='Vehicle odometry', linewidth=3)
+    line3 = ax[i].hlines(df_bar[axes].iloc[-1],xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='Bar position', linewidth=3)
     ax[i].set_ylabel(f'{axes.capitalize()} [m]')
     ax[i].set_xticks([])
     ax[i].set_xticklabels([])
-    ax[i].legend(fontsize=8, loc='upper left')
     ax[i].yaxis.set_major_locator(MaxNLocator(integer=True, prune='both', nbins=max_ticks))
 
+# Combine the legends from both axes
+lines = [line1[0], line2[0], line3]
+labels = [line.get_label() for line in lines]
+
+
+# Create a figure-level legend
+fig.legend(lines,labels, loc='upper left',fontsize=20)
 
 sensor_data = find_intervals(df_sensors)
+first_touch = find_first_touch(sensor_data)
+sensor_data[first_touch[0]][0] = (first_touch[1],first_touch[1]+0.2)
+
 ax[3].set_yticks([0,1,2,3,4,5,6,7,8])
 for i, (sensor, intervals) in enumerate(sensor_data.items()):
     for interval in intervals:
         start_time, end_time = interval
-        ax[3].fill_betweenx(y=[i], x1=start_time, x2=end_time,color='blue',linewidth=3, label=sensor)
+        ax[3].fill_betweenx(y=[i], x1=start_time, x2=end_time,color='blue',linewidth=5, label=sensor)
             
 
 ax[3].set_yticklabels([sensor_name_mapping[i] for i in range(9)])
@@ -148,7 +174,7 @@ color_mappnig_matrix = {'Searching':custom_cmap(4),
                         'Landing':custom_cmap(5)}
     
 legend_handles = [Patch(color=color, label=label) for label,color in color_mappnig_matrix.items()]
-fig.legend(handles=legend_handles,loc='upper left')
+fig.legend(handles=legend_handles,loc='upper right',fontsize=20)
 
 ax[3].grid()   
 ax[3].set_ylim(0,8)
@@ -184,6 +210,8 @@ for i in range(3):
     for j in range(3):
         sensing_pad_state = df_sensors[f'sensor_{sensor_id}'].iloc[-1]
         ellipse_color = 'orange' if sensing_pad_state == 1 else 'white'
+        if sensor_id == 8:
+            ellipse_color = 'orange'
         y_coordinate =  transform_ax3_to_ax2.transform((0,sensor_id))[1] #(i * (finger_height + gap +0.02)) + 0.14 * j
         ellipse = patches.Ellipse((0.008, y_coordinate),
                                   ellipse_radius, ellipse_radius * 2, edgecolor='black', facecolor=ellipse_color)
@@ -226,4 +254,4 @@ for i in range(len(transition_indices) - 1 ):
         ab = AnnotationBbox(getImage(closed_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((x, 0.01))),boxcoords="axes fraction", frameon=False)
         ax_top.add_artist(ab)
     
-plt.savefig('/home/anish/Documents/Thesis/Plots/tactile_plot_first_try.png',format='png',dpi=600)
+plt.savefig('/home/anish/Documents/Thesis/Plots/tactile_plot_first_try.png',format='png',dpi=dpi)
