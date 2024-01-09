@@ -189,9 +189,9 @@ def draw_drones(df_command):
     drone_state = df_command['state'].iloc[-1]
     x = df_command.index[-1]
     if drone_state == GRASP or drone_state == SEARCHING:
-        open_drone_artist.xytext = transform_ax0_to_ax_top.transform((x, 0.01))
+        open_drone_artist.set_transform((transform_ax0_to_ax_top.transform((x, 0.01))))
     if drone_state == EVALUATE:
-        closed_drone_artist.xytext = transform_ax0_to_ax_top.transform((x, 0.01))
+        closed_drone_artist.set_transform((transform_ax0_to_ax_top.transform((x, 0.01))))
             
     return ax_top
 
@@ -239,7 +239,13 @@ def draw_frame(frame):
     df_ref_frame = df_ref.iloc[:frame]
     df_mocap_frame = df_mocap.iloc[:frame]
     df_command_frame = df_command.iloc[:frame]
-    df_sensors_frame = df_sensors.iloc[:frame]    
+    df_sensors_frame = df_sensors.iloc[:frame]
+
+    for artist in ax[0].collections:
+        artist.remove()
+    for artist in ax[3].collections:
+        artist.remove()
+    
         
     for i, axes_label in enumerate(['x', 'y', 'z']):
         lines[0][i].set_data(index.values, df_ref_frame[axes_label].values)
@@ -349,13 +355,10 @@ if __name__ == "__main__":
     ax_top.axis('off')
     transform_ax0_to_ax_top = ax[0].transData + ax_top.transData.inverted()
     
-    open_drone = AnnotationBbox(getImage(open_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((0.1, 0.01))), frameon=True)
-    closed_drone = AnnotationBbox(getImage(closed_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((0.1, 0.01))), frameon=True)
-    ax_top.add_artist(open_drone)
-    ax_top.add_artist(closed_drone)
-    
-    open_drone_artist = ax_top.artists[0]
-    closed_drone_artist = ax_top.artists[1]
+    open_drone = AnnotationBbox(getImage(open_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((0, 0.01))), frameon=True)
+    closed_drone = AnnotationBbox(getImage(closed_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((0, 0.01))), frameon=True)
+    open_drone_artist  = ax_top.add_artist(open_drone)
+    closed_drone_artist = ax_top.add_artist(closed_drone)
 
 
     anim= FuncAnimation(fig, draw_frame, frames=NUM_FRAMES, interval=INTERVAL,blit=True, repeat=False)

@@ -91,7 +91,7 @@ def find_intervals(sensor_data):
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/closed_loop_tactile_7_12/test_tactile_3'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/closed_loop_tactile_7_12/test_tactile_4'
 data_dict = get_data_dict(path)
 
 df_ref = data_dict[TRAJECTORY_SETPOINT]
@@ -254,4 +254,5 @@ for i in range(len(transition_indices) - 1 ):
         ab = AnnotationBbox(getImage(closed_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((x, 0.01))),boxcoords="axes fraction", frameon=False)
         ax_top.add_artist(ab)
     
-plt.savefig('/home/anish/Documents/Thesis/Plots/tactile_plot_first_try.png',format='png',dpi=dpi)
+#plt.savefig('/home/anish/Documents/Thesis/Plots/tactile_plot_first_try.png',format='png',dpi=dpi)
+plt.show()

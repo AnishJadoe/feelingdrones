@@ -109,34 +109,7 @@ def synchronize_dataframes(df_list, dt):
 
 
 
-# File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/closed_loop_tactile_7_12/test_tactile_3'
-data_dict = get_data_dict(path)
 
-df_ref = data_dict[TRAJECTORY_SETPOINT]
-df_mocap = data_dict[MOCAP]
-df_est = data_dict[VEHICLE_ODOMETRY]
-df_bar = data_dict[BAR_POSE]
-df_sensors = data_dict[TACTILE_DATA]
-df_sensors = df_sensors.mask(df_sensors - df_sensors.iloc[0] <= -15, 1)
-df_sensors = df_sensors.mask(df_sensors > 1, 0)
-df_command = data_dict[DRONE_STATE]
-
-
-searching = df_command[df_command['state'] == SEARCHING].index
-touched = df_command[df_command['state'] == TOUCHED].index
-evaluating = df_command[df_command['state'] == EVALUATE].index
-landing = df_command[df_command['state'] == LAND].index
-
-t_start = min(searching)
-t_end = min(landing) + 0.5
-
-df_ref = df_ref.loc[t_start:t_end]
-df_mocap = df_mocap.loc[t_start:t_end]
-df_est = df_est.loc[t_start:t_end]
-df_bar = df_bar.loc[t_start:t_end]
-df_sensors = df_sensors.loc[t_start:t_end]
-df_command = df_command.loc[t_start:t_end]
 
 def plot_reference_trajectory(ax):
     axes = ['x', 'y', 'z']
@@ -185,13 +158,21 @@ def plot_fingers_and_pads(ax2, transform_ax3_to_ax2, df_sensors):
         finger_id += 3
         
 def draw_drones(df_command):
+    closed_drone_path = '/home/anish/dev/working/feelingdrones/px4_logger/icons/closed_drone.png'
+    open_drone_path = '/home/anish/dev/working/feelingdrones/px4_logger/icons/open_drone.png'
+
+    ax_top = ax[0].inset_axes([0, 1.05, 1, 0.3], transform=ax[0].transAxes)  # Create inset axes to the right
+    ax_top.axis('off')
+    transform_ax0_to_ax_top = ax[0].transData + ax_top.transData.inverted()
 
     drone_state = df_command['state'].iloc[-1]
     x = df_command.index[-1]
     if drone_state == GRASP or drone_state == SEARCHING:
-        open_drone_artist.xytext = transform_ax0_to_ax_top.transform((x, 0.01))
+        ab = AnnotationBbox(getImage(open_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((x, 0.01))), frameon=True, animated=True)
+        ax_top.add_artist(ab)
     if drone_state == EVALUATE:
-        closed_drone_artist.xytext = transform_ax0_to_ax_top.transform((x, 0.01))
+        ab = AnnotationBbox(getImage(closed_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((x, 0.01))), frameon=True, animated=True)
+        ax_top.add_artist(ab)
             
     return ax_top
 
@@ -239,7 +220,13 @@ def draw_frame(frame):
     df_ref_frame = df_ref.iloc[:frame]
     df_mocap_frame = df_mocap.iloc[:frame]
     df_command_frame = df_command.iloc[:frame]
-    df_sensors_frame = df_sensors.iloc[:frame]    
+    df_sensors_frame = df_sensors.iloc[:frame]
+
+    for artist in ax[0].collections:
+        artist.remove()
+    for artist in ax[3].collections:
+        artist.remove()
+    
         
     for i, axes_label in enumerate(['x', 'y', 'z']):
         lines[0][i].set_data(index.values, df_ref_frame[axes_label].values)
@@ -253,6 +240,9 @@ def draw_frame(frame):
 
     if not df_sensors_frame.empty:
         sensor_data_frame = find_intervals(df_sensors_frame)
+        first_touch = find_first_touch(sensor_data_frame)
+        if first_touch[0]:
+            sensor_data_frame[first_touch[0]][0] = (first_touch[1],first_touch[1]+0.2)
         for i, (sensor, intervals) in enumerate(sensor_data_frame.items()):
             for interval in intervals:
                 start_time, end_time = interval
@@ -264,9 +254,9 @@ def draw_frame(frame):
     if ax[3].collections:
         artist_objects.extend(ax[3].collections)
 
-    if frame > 10:
-        drone_patches = draw_drones(df_command_frame)
-        artist_objects.extend(drone_patches.artists)
+    # if frame > 10:
+    #     drone_patches = draw_drones(df_command_frame)
+    #     artist_objects.extend(drone_patches.artists)
         
     if (NUM_FRAMES - frame) < 3:
         finger_patches = draw_fingers()
@@ -277,8 +267,38 @@ def draw_frame(frame):
 
 
 if __name__ == "__main__":
+    
+    # File path to rosbag
+    path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/closed_loop_tactile_7_12/test_tactile_3'
+    data_dict = get_data_dict(path)
+
+    df_ref = data_dict[TRAJECTORY_SETPOINT]
+    df_mocap = data_dict[MOCAP]
+    df_est = data_dict[VEHICLE_ODOMETRY]
+    df_bar = data_dict[BAR_POSE]
+    df_sensors = data_dict[TACTILE_DATA]
+    df_sensors = df_sensors.mask(df_sensors - df_sensors.iloc[0] <= -15, 1)
+    df_sensors = df_sensors.mask(df_sensors > 1, 0)
+    df_command = data_dict[DRONE_STATE]
+
+
+    searching = df_command[df_command['state'] == SEARCHING].index
+    touched = df_command[df_command['state'] == TOUCHED].index
+    evaluating = df_command[df_command['state'] == EVALUATE].index
+    landing = df_command[df_command['state'] == LAND].index
+
+    t_start = min(searching)
+    t_end = min(landing) + 0.5
+
+    df_ref = df_ref.loc[t_start:t_end]
+    df_mocap = df_mocap.loc[t_start:t_end]
+    df_est = df_est.loc[t_start:t_end]
+    df_bar = df_bar.loc[t_start:t_end]
+    df_sensors = df_sensors.loc[t_start:t_end]
+    df_command = df_command.loc[t_start:t_end]
+
     # Synchronize dataframes
-    dt = 0.1
+    dt = 0.01
     synchronized_dfs = synchronize_dataframes([df_ref, df_mocap, df_bar, df_sensors, df_command], dt=dt)
     df_ref, df_mocap, df_bar, df_sensors, df_command = synchronized_dfs
     # Identify transitions between states 5 and 8
@@ -290,12 +310,20 @@ if __name__ == "__main__":
     NUM_FRAMES = len(df_ref)
     INTERVAL =  30
     
+        
+    axes = ['x','y','z']
+    for i,axes in enumerate(axes):
+        horizontal_line = ax[i].hlines(df_bar[axes].iloc[-1],xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='Bar position', linewidth=3)
+        
+    background = []
     # custom_cmap, legend_handles = plot_state_regions(ax, df_command, transition_indices, [-0.1, -0.1, -0.1, 0], [1.7, 1.1, 1.1, 1.1])
     # plot_sensors(ax, df_sensors, sensor_name_mapping)
     cmap = ColorMapper.get_cmap('Pastel1')
     # Create a color list for each unique state
     state_colors = [cmap(i) for i in range(df_command['state'].nunique() + 1)]
     custom_cmap = ListedColormap(state_colors)    
+    for i in range(4):
+        background.append(ax[i].imshow([df_command['state'].values],cmap=custom_cmap, aspect='auto', extent=[0, 0.1, -10, 10],alpha=0.3))
      # Mischelaneous   
     color_mapping_matrix = {'Searching':custom_cmap(4),
                             'Touched':custom_cmap(0),
@@ -305,17 +333,6 @@ if __name__ == "__main__":
         
     legend_handles = [Patch(color=color, label=label) for label,color in color_mapping_matrix.items()]
     fig.legend(handles=legend_handles,loc='upper right',fontsize=20)
-
-    axes = ['x','y','z']
-    for i,axes in enumerate(axes):
-        horizontal_line = ax[i].hlines(df_bar[axes].iloc[-1],xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='Bar position', linewidth=3)
-
-        
-    background = []
-    data = [df_command['state'].values]
-    for i in range(4):
-        background.append(ax[i].imshow(data,cmap=custom_cmap, aspect='auto', extent=[0, 0.1, -10, 10],alpha=0.3))
-        
     lines = plot_reference_trajectory(ax)
     legend_lines = [lines[0][0], lines[1][0],horizontal_line]
     labels = [line.get_label() for line in legend_lines]
@@ -341,26 +358,11 @@ if __name__ == "__main__":
     transition_indices = transitions[transitions.isin([-1, 1])].index
     transition_indices = transition_indices.append(pd.Index([min(landing)]))
     transition_indices = transition_indices.insert(0,pd.Index([min(searching)]))
-    
-    closed_drone_path = '/home/anish/dev/working/feelingdrones/px4_logger/icons/closed_drone.png'
-    open_drone_path = '/home/anish/dev/working/feelingdrones/px4_logger/icons/open_drone.png'
-    
-    ax_top = ax[0].inset_axes([0, 1.05, 1, 0.3], transform=ax[0].transAxes)  # Create inset axes to the right
-    ax_top.axis('off')
-    transform_ax0_to_ax_top = ax[0].transData + ax_top.transData.inverted()
-    
-    open_drone = AnnotationBbox(getImage(open_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((0.1, 0.01))), frameon=True)
-    closed_drone = AnnotationBbox(getImage(closed_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((0.1, 0.01))), frameon=True)
-    ax_top.add_artist(open_drone)
-    ax_top.add_artist(closed_drone)
-    
-    open_drone_artist = ax_top.artists[0]
-    closed_drone_artist = ax_top.artists[1]
 
 
     anim= FuncAnimation(fig, draw_frame, frames=NUM_FRAMES, interval=INTERVAL,blit=True, repeat=False)
     
   
     # Display the animation
-    plt.show()
-    #anim.save('first_try.gif', writer='pillow', fps=30, progress_callback=lambda i, n: print(i),)
+    #plt.show()
+    anim.save('first_try_100_fps.mp4', writer='ffmpeg', fps=100, progress_callback=lambda i, n: print(f'{round((i/NUM_FRAMES)*100,2)}%'))
