@@ -17,7 +17,7 @@ font_path = '/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf'
 # Register the font
 font_manager.fontManager.addfont(font_path)
 
-plt.rcParams['font.size'] = 25
+plt.rcParams['font.size'] = 20
 plt.rcParams['font.family'] = 'Times New Roman'
 fig_size = (20,10)
 dpi = 250
@@ -91,7 +91,7 @@ def find_intervals(sensor_data):
 
 
 # File path to rosbag
-path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files/closed_loop_tactile_7_12/test_tactile_4'
+path ='/home/anish/Documents/Thesis/Drone/ros2_bag_files_share/closed_loop_tactile_7_12/test_tactile_4'
 data_dict = get_data_dict(path)
 
 df_ref = data_dict[TRAJECTORY_SETPOINT]
@@ -101,14 +101,21 @@ df_bar = data_dict[BAR_POSE]
 df_sensors = data_dict[TACTILE_DATA]
 df_sensors = df_sensors.mask(df_sensors - df_sensors.iloc[0] <= -15, 1)
 df_sensors = df_sensors.mask(df_sensors > 1, 0)
+# Preprocess Drone State to make touched more prenounced
 df_command = data_dict[DRONE_STATE]
+searching = df_command[df_command['state'] == SEARCHING].index
+df_command.loc[max(searching):max(searching+1)] = TOUCHED
+evaluating = df_command[df_command['state'] == EVALUATE].index
+df_command.loc[min(evaluating):min(evaluating)+1] = GRASP
 
 
+# Find values with updated DF
 searching = df_command[df_command['state'] == SEARCHING].index
 touched = df_command[df_command['state'] == TOUCHED].index
 evaluating = df_command[df_command['state'] == EVALUATE].index
 landing = df_command[df_command['state'] == LAND].index
 
+# Time in Seconds
 t_start = min(searching)
 t_end = min(landing) + 0.5
 
@@ -120,30 +127,35 @@ df_sensors = df_sensors.loc[t_start:t_end]
 df_command = df_command.loc[t_start:t_end]
 
 
-
-
 axes = ['x','y','z']
 fig,ax = plt.subplots(4,1, figsize=fig_size, height_ratios=[1,1,1,2])
 
 
 max_ticks = 4
 for i,axes in enumerate(axes):
-    line1 = ax[i].plot(df_ref.index,df_ref[axes], label='Reference position', linewidth=3)
-    # ax[i].plot(df_est.index,df_est[axes], label='estimated odometry')
-    line2 = ax[i].plot(df_mocap.index,df_mocap[axes], label='Vehicle odometry', linewidth=3)
-    line3 = ax[i].hlines(df_bar[axes].iloc[-1],xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='Bar position', linewidth=3)
+    bar_loc = df_bar[axes].iloc[-1]
+    
     ax[i].set_ylabel(f'{axes.capitalize()} [m]')
+
+    
+    line1 = ax[i].plot(df_ref.index,df_ref[axes], label='Reference position', linewidth=3)
+    line2 = ax[i].plot(df_mocap.index,df_mocap[axes], label='Vehicle odometry', linewidth=3)
+    line3 = ax[i].hlines(bar_loc,xmin=min(df_bar.index),xmax=max(df_bar.index),linestyles='dashed', label='Bar position', linewidth=3)
+    
+    ax[i].set_ylim((bar_loc-0.5,bar_loc+0.5))  
+    ax[i].set_yticks([round(bar_loc-0.3,1),round(bar_loc+0.3,1)])  
     ax[i].set_xticks([])
     ax[i].set_xticklabels([])
-    ax[i].yaxis.set_major_locator(MaxNLocator(integer=True, prune='both', nbins=max_ticks))
 
+
+    
 # Combine the legends from both axes
 lines = [line1[0], line2[0], line3]
 labels = [line.get_label() for line in lines]
 
 
 # Create a figure-level legend
-fig.legend(lines,labels, loc='upper left',fontsize=20)
+fig.legend(lines,labels, loc='upper left',fontsize=15)
 
 sensor_data = find_intervals(df_sensors)
 first_touch = find_first_touch(sensor_data)
@@ -174,16 +186,14 @@ color_mappnig_matrix = {'Searching':custom_cmap(4),
                         'Landing':custom_cmap(5)}
     
 legend_handles = [Patch(color=color, label=label) for label,color in color_mappnig_matrix.items()]
-fig.legend(handles=legend_handles,loc='upper right',fontsize=20)
+fig.legend(handles=legend_handles,loc='upper right',fontsize=15)
 
 ax[3].grid()   
 ax[3].set_ylim(0,8)
 ax[3].set_xlabel('Time [s]')
-ax[0].set_ylim(-0.9,-0.2)
-ax[1].set_ylim(-1.5,-0.5)
-ax[2].set_ylim(-1.8,-1)
-ax[2].invert_yaxis()
 
+    
+ax[2].invert_yaxis()
 # Create rectangles and ellipses for fingers and sensing pads
 
 finger_width = 0.015
@@ -210,8 +220,8 @@ for i in range(3):
     for j in range(3):
         sensing_pad_state = df_sensors[f'sensor_{sensor_id}'].iloc[-1]
         ellipse_color = 'orange' if sensing_pad_state == 1 else 'white'
-        if sensor_id == 8:
-            ellipse_color = 'orange'
+        # if sensor_id == 8:
+        #     ellipse_color = 'orange'
         y_coordinate =  transform_ax3_to_ax2.transform((0,sensor_id))[1] #(i * (finger_height + gap +0.02)) + 0.14 * j
         ellipse = patches.Ellipse((0.008, y_coordinate),
                                   ellipse_radius, ellipse_radius * 2, edgecolor='black', facecolor=ellipse_color)
@@ -225,7 +235,7 @@ transitions = df_command['state'].diff()
 
 # Find the indices where transitions occur (from any state to 5 or 8)
 transition_indices = transitions[transitions.isin([-1, 1])].index
-max_y = [1.7,1.1,1.1,1.1]
+max_y = [1.2,1.1,1.1,1.1]
 min_y = [-0.1,-0.1,-0.1,0]
 # Plot vertical lines at transition points
 for i in range(4):
@@ -233,10 +243,10 @@ for i in range(4):
         ax[i].axvline(x=index, color='black', linestyle='--', label='State Transition',
                     ymin=min_y[i], ymax=max_y[i], clip_on=False)
     
-closed_drone_path = '/home/anish/dev/working/feelingdrones/px4_logger/icons/closed_drone.png'
-open_drone_path = '/home/anish/dev/working/feelingdrones/px4_logger/icons/open_drone.png'
+closed_drone_path = '/home/anish/dev/working/feelingdrones/offboard/icons/closed_drone.png'
+open_drone_path = '/home/anish/dev/working/feelingdrones/offboard/icons/open_drone.png'
 
-ax_top = ax[0].inset_axes([0, 1.05, 1, 0.3], transform=ax[0].transAxes)  # Create inset axes to the right
+ax_top = ax[0].inset_axes([0, 1.02, 1, 0.4], transform=ax[0].transAxes)  # Create inset axes to the right
 ax_top.axis('off')
 transform_ax0_to_ax_top = ax[0].transData + ax_top.transData.inverted()
 
@@ -248,10 +258,10 @@ for i in range(len(transition_indices) - 1 ):
     drone_state = int(df_command.loc[transition_indices[i]:transition_indices[i+1]].iloc[0])
     x = (transition_indices[i+1] + transition_indices[i]) / 2
     if drone_state == GRASP or drone_state == SEARCHING:
-        ab = AnnotationBbox(getImage(open_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((x, 0.01))),boxcoords="axes fraction", frameon=False)
+        ab = AnnotationBbox(getImage(open_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((x, 0.2))),boxcoords="axes fraction", frameon=False)
         ax_top.add_artist(ab)
     if drone_state == EVALUATE:
-        ab = AnnotationBbox(getImage(closed_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((x, 0.01))),boxcoords="axes fraction", frameon=False)
+        ab = AnnotationBbox(getImage(closed_drone_path, zoom=0.12), (transform_ax0_to_ax_top.transform((x, 0.2))),boxcoords="axes fraction", frameon=False)
         ax_top.add_artist(ab)
     
 #plt.savefig('/home/anish/Documents/Thesis/Plots/tactile_plot_first_try.png',format='png',dpi=dpi)
